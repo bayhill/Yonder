@@ -7,8 +7,8 @@ Live: https://bayhill.github.io/Yonder/
 
 | | |
 |---|---|
-| ![summer noon](screenshots/summer-noon.jpg) | ![spring dawn mist](screenshots/spring-dawn-mist.jpg) |
-| ![autumn dusk overcast](screenshots/autumn-dusk-overcast.jpg) | ![winter noon sun](screenshots/winter-noon-sun.jpg) |
+| ![summer noon](docs/reference/summer-noon.jpg) | ![spring dawn mist](docs/reference/spring-dawn-mist.jpg) |
+| ![autumn dusk overcast](docs/reference/autumn-dusk-overcast.jpg) | ![winter noon sun](docs/reference/winter-noon-sun.jpg) |
 
 Default place is Norrtälje. Click the place name for another (or "here"). Move the pointer for the
 timeline; drag to go up to 48 hours ahead, ←/→ step an hour, Escape returns to now. It installs as a
