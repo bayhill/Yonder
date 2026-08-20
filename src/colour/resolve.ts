@@ -84,7 +84,8 @@ export function createResolver() {
       for (let i = 0; i < RAMP; i++) {
         const k = i - 2;
         // Lit side warms slightly, shadow side cools slightly and loses a little chroma.
-        adjust(base, k * spread, k < 0 ? k * 0.006 : k * 0.004, k * 3 * L.contrast, tmp);
+        const hs = HUE_SPREAD[r] ?? 3;
+        adjust(base, k * spread, k < 0 ? k * 0.006 : k * 0.003, k * hs * (0.4 + 0.6 * L.contrast), tmp);
         ramps[r][i] = toHex(tmp);
       }
       for (let d = 0; d <= DEPTHS; d++) {
@@ -127,4 +128,6 @@ const SUN_WARM: Oklch = { l: 0.86, c: 0.070, h: 70 };
 const MOON: Oklch = { l: 0.93, c: 0.012, h: 95 };
 const STAR: Oklch = { l: 0.92, c: 0.01, h: 90 };
 /** Some roles want a quieter ramp than others. */
-const SPREAD: Partial<Record<Role, number>> = { grassNear: 0.6, grassFar: 0.5, ground: 0.6, foliageBirch: 0.9, foliage: 0.8 };
+/** Degrees of hue shift per ramp step: lit side toward yellow, shade toward blue-green. */
+const HUE_SPREAD: Partial<Record<Role, number>> = { foliage: -9, foliageBirch: -10, grassNear: -6, grassFar: -5, farTreeline: -4 };
+const SPREAD: Partial<Record<Role, number>> = { grassNear: 0.6, grassFar: 0.5, ground: 0.6, foliageBirch: 0.95, foliage: 0.9 };

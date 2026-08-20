@@ -17,6 +17,13 @@ export interface Tree {
   depth: number;            // 0 near .. 1 far (atmosphere)
   trunk: Float32Array;      // closed polygon, absolute coords
   branches: Float32Array[]; // closed polygons
+  /** Height fraction (0 base .. 1 top) per vertex of `trunk`, then per vertex of each branch — drives bending. */
+  trunkS: Float32Array;
+  branchS: Float32Array[];
+  /** Height fraction per foliage blob. */
+  blobS: Float32Array;
+  /** Trunk length in world px. */
+  trunkLen: number;
   foliage: Blob[];          // drawn back-to-front as generated
   /** Dark bark marks (birch lenticels and the rough base), absolute polygons. */
   marks: Float32Array[];
@@ -81,7 +88,19 @@ function blob(rx: number, ry: number, rng: Rng, n = 18, rough = 0.16): Float32Ar
 }
 
 export function generateTree(spec: TreeSpec, rng: Rng): Tree {
-  return spec.kind === 'birch' ? birch(spec, rng) : pine(spec, rng);
+  const t = spec.kind === 'birch' ? birch(spec, rng) : pine(spec, rng);
+  // Height fractions for bending: how far up the stem each vertex / blob sits.
+  const sOf = (y: number) => Math.max(0, Math.min(1.2, (t.y - y) / t.trunkLen));
+  t.trunkS = new Float32Array(t.trunk.length / 2);
+  for (let i = 0; i < t.trunkS.length; i++) t.trunkS[i] = sOf(t.trunk[i * 2 + 1]);
+  t.branchS = t.branches.map((b) => {
+    const a = new Float32Array(b.length / 2);
+    for (let i = 0; i < a.length; i++) a[i] = sOf(b[i * 2 + 1]);
+    return a;
+  });
+  t.blobS = new Float32Array(t.foliage.length);
+  for (let i = 0; i < t.foliage.length; i++) t.blobS[i] = sOf(t.foliage[i].y);
+  return t;
 }
 
 function birch(spec: TreeSpec, rng: Rng): Tree {
@@ -191,7 +210,7 @@ function birch(spec: TreeSpec, rng: Rng): Tree {
     }
     marks.push(new Float32Array(pts));
   }
-  return { kind: 'birch', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, marks, crownX, crownY };
+  return { kind: 'birch', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, marks, crownX, crownY, trunkS: new Float32Array(0), branchS: [], blobS: new Float32Array(0), trunkLen: H * 0.82 };
 }
 
 function pine(spec: TreeSpec, rng: Rng): Tree {
@@ -230,5 +249,5 @@ function pine(spec: TreeSpec, rng: Rng): Tree {
   const top = trunk.tip;
   foliage.push({ x: top[0], y: top[1] + H * 0.015, verts: blob(H * 0.045, H * 0.03, rng, 12, 0.35), tone: 0.35, sway: 0.8, dx: 0 });
   foliage.sort((a, b) => a.tone - b.tone);
-  return { kind: 'pine', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, marks: [], crownX: crownX / Math.max(1, count), crownY: crownY / Math.max(1, count) };
+  return { kind: 'pine', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, marks: [], crownX: crownX / Math.max(1, count), crownY: crownY / Math.max(1, count), trunkS: new Float32Array(0), branchS: [], blobS: new Float32Array(0), trunkLen: H * 0.94 };
 }

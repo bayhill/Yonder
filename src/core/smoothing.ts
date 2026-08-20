@@ -37,3 +37,23 @@ export class Spring {
     return this.value;
   }
 }
+
+/**
+ * Driven damped oscillator for things that really do swing — tree stems in wind.
+ * `freqHz` is the natural frequency, `zeta` the damping ratio (< 1 lets it swing through
+ * gusts; 1 would be critical). Semi-implicit Euler is plenty stable at 60 Hz for these rates.
+ */
+export class Oscillator {
+  value: number;
+  velocity = 0;
+  constructor(value = 0, public freqHz = 0.4, public zeta = 0.35) {
+    this.value = value;
+  }
+  step(target: number, dt: number): number {
+    const w = this.freqHz * Math.PI * 2;
+    const acc = w * w * (target - this.value) - 2 * this.zeta * w * this.velocity;
+    this.velocity += acc * dt;
+    this.value += this.velocity * dt;
+    return this.value;
+  }
+}
