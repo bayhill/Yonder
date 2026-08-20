@@ -25,6 +25,7 @@ import { createOverlay } from './ui/overlay';
 import { createLabel } from './ui/label';
 import { createTimeline } from './ui/timeline';
 import { createBrowserChrome } from './ui/chrome';
+import { describeScene } from './ui/describe';
 
 const params = new URLSearchParams(location.search);
 const place: Location = {
@@ -100,10 +101,14 @@ function setPlace(loc: Location) {
   p.set('lat', loc.lat.toFixed(3)); p.set('lon', loc.lon.toFixed(3)); p.set('name', loc.name);
   history.replaceState(null, '', `${location.pathname}?${p}`);
   label.setLocation(loc);
+  document.title = `Yonder · ${loc.name}`;
   series = null; track = null;
   store.setLocation(loc);
 }
 store.setLocation(place);
+document.title = `Yonder · ${place.name}`;
+canvas.setAttribute('role', 'img');
+let describedAt = 0;
 
 // --- loop ---
 const light = blankLight();
@@ -158,6 +163,7 @@ startLoop({
     browserChrome.update(colours.version, colours.sky, colours.hex('grassFar'), colours.atmos('farTreeline', 0.7));
     overlay.setInk(light.brightness * (1 - light.skyDark * 0.6));
     label.setTime(now, clock.offsetMs < 60e3);
+    if (performance.now() - describedAt > 60e3) { describedAt = performance.now(); canvas.setAttribute('aria-label', describeScene(place.name, now, w, sun.elevation, accumulation.snow)); }
   },
 });
 

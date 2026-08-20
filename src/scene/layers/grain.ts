@@ -22,5 +22,12 @@ export function installGrain(rng: Rng, opacity = 0.13): HTMLElement {
   el.style.cssText = `position:fixed;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:${opacity};` +
     `background-image:url(${tile.toDataURL('image/png')});background-size:${size / 2}px ${size / 2}px;`;
   document.body.appendChild(el);
+  // Foreground atmosphere: the faintest darkening toward the bottom corners, the way a print's
+  // near ground sits heavier than its sky. Also a DOM layer; also free.
+  const vignette = document.createElement('div');
+  vignette.id = 'vignette';
+  vignette.style.cssText = 'position:fixed;inset:0;pointer-events:none;' +
+    'background:radial-gradient(ellipse 120% 90% at 50% 35%, rgba(0,0,0,0) 55%, rgba(10,14,18,.16) 100%);';
+  document.body.appendChild(vignette);
   return el;
 }
