@@ -14,6 +14,12 @@ export interface GrassBand {
   phase: Float32Array;
   /** Current tip offset (x, y) after wind; initialised to the resting lean. */
   tipX: Float32Array; tipY: Float32Array;
+  /** Previous-step tip offset, for render interpolation. */
+  prevX: Float32Array; prevY: Float32Array;
+  /** Spring velocity of the tip (x only; y follows the arc). */
+  vel: Float32Array;
+  /** Per-blade spring stiffness (rad/s). Shorter, stiffer blades respond faster. */
+  omega: Float32Array;
 }
 
 export interface BandSpec {
@@ -37,6 +43,7 @@ export function generateBand(spec: BandSpec, rng: Rng): GrassBand {
     x: new Float32Array(n), y: new Float32Array(n), h: new Float32Array(n), w: new Float32Array(n),
     lean: new Float32Array(n), tone: new Uint8Array(n), phase: new Float32Array(n),
     tipX: new Float32Array(n), tipY: new Float32Array(n),
+    prevX: new Float32Array(n), prevY: new Float32Array(n), vel: new Float32Array(n), omega: new Float32Array(n),
   };
   // Generate, then sort by y so nearer blades draw over farther ones.
   const order: number[] = [];
@@ -68,13 +75,40 @@ export function generateBand(spec: BandSpec, rng: Rng): GrassBand {
   const sorted: GrassBand = { ...band,
     x: new Float32Array(n), y: new Float32Array(n), h: new Float32Array(n), w: new Float32Array(n),
     lean: new Float32Array(n), tone: new Uint8Array(n), phase: new Float32Array(n),
-    tipX: new Float32Array(n), tipY: new Float32Array(n) };
+    tipX: new Float32Array(n), tipY: new Float32Array(n),
+    prevX: new Float32Array(n), prevY: new Float32Array(n), vel: new Float32Array(n), omega: new Float32Array(n) };
   order.forEach((src, dst) => {
     sorted.x[dst] = band.x[src]; sorted.y[dst] = band.y[src]; sorted.h[dst] = band.h[src]; sorted.w[dst] = band.w[src];
     sorted.lean[dst] = band.lean[src]; sorted.tone[dst] = band.tone[src]; sorted.phase[dst] = band.phase[src];
-    sorted.tipX[dst] = band.lean[src]; sorted.tipY[dst] = -band.h[src];
+    sorted.tipX[dst] = sorted.prevX[dst] = band.lean[src]; sorted.tipY[dst] = sorted.prevY[dst] = -band.h[src];
+    sorted.omega[dst] = 5.5 + 2.5 * (spec.hMax - band.h[src]) / (spec.hMax - spec.hMin + 1e-6) + rng.range(-0.6, 0.6);
   });
   return sorted;
+}
+
+/**
+ * Advances every blade's tip toward the wind-bent target with a critically damped spring.
+ * `bendAt(i)` gives the field's signed bend for blade i; `amp` scales it to a fraction of height.
+ */
+export function stepBand(band: GrassBand, dt: number, bend: Float32Array, amp: number): void {
+  const n = band.count;
+  for (let i = 0; i < n; i++) {
+    const h = band.h[i];
+    band.prevX[i] = band.tipX[i]; band.prevY[i] = band.tipY[i];
+    const target = band.lean[i] + h * amp * bend[i];
+    // exact critically damped step (see core/smoothing)
+    const w = band.omega[i];
+    const x0 = band.tipX[i] - target, v0 = band.vel[i];
+    const e = Math.exp(-w * dt);
+    const c2 = v0 + w * x0;
+    const x = (x0 + c2 * dt) * e;
+    band.vel[i] = (c2 - w * (x0 + c2 * dt)) * e;
+    const tx = target + x;
+    band.tipX[i] = tx;
+    // The tip follows an arc: a bent blade is a little shorter on screen.
+    const r = tx / h;
+    band.tipY[i] = -h * (1 - 0.16 * r * r);
+  }
 }
 
 /** Draws one blade as a tapered curved shape. Caller sets fillStyle and calls beginPath/fill. */

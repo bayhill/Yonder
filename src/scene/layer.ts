@@ -1,6 +1,7 @@
 import type { Resolved } from '../colour/resolve';
 import type { Light } from '../colour/light';
 import type { Viewport } from './composition';
+import type { WindField } from '../wind/field';
 
 /** Everything a layer needs to draw one frame. Built once per frame, never per layer. */
 export interface Frame {
@@ -9,6 +10,8 @@ export interface Frame {
   vp: Viewport;
   /** Scene time in seconds (simulation clock, for idle motion). */
   t: number;
+  /** Interpolation factor between the previous and current sim step, 0..1. */
+  alpha: number;
   dpr: number;
 }
 
@@ -17,7 +20,7 @@ export interface Layer {
   /** True when the layer only depends on colours/viewport (no per-frame motion); it is cached offscreen. */
   readonly static?: boolean;
   /** Fixed-timestep simulation hook. */
-  update?(dt: number, t: number): void;
+  update?(dt: number, t: number, wind: WindField): void;
   /** Called when the canvas size changes; rebuild any size-dependent caches here. */
   resize?(vp: Viewport, dpr: number): void;
   draw(ctx: CanvasRenderingContext2D, f: Frame): void;

@@ -8,7 +8,7 @@ export interface Renderer {
   readonly vp: Viewport;
   readonly dpr: number;
   resize(): void;
-  render(colours: Resolved, light: Light, t: number): void;
+  render(colours: Resolved, light: Light, t: number, alpha: number): void;
   /** Dev: ms spent per layer in the last profiled frame. */
   profile(colours: Resolved, light: Light, t: number): Record<string, number>;
 }
@@ -27,7 +27,7 @@ export function createRenderer(canvas: HTMLCanvasElement, layers: Layer[], maxDp
   let backVersion = -1;
   const vp = fitViewport(1, 1);
   let dpr = 1;
-  const frame: Frame = { colours: null as unknown as Resolved, light: null as unknown as Light, vp, t: 0, dpr: 1 };
+  const frame: Frame = { colours: null as unknown as Resolved, light: null as unknown as Light, vp, t: 0, alpha: 1, dpr: 1 };
 
   function resize() {
     const fixed = new URLSearchParams(location.search).get('vp')?.split('x').map(Number);
@@ -42,8 +42,8 @@ export function createRenderer(canvas: HTMLCanvasElement, layers: Layer[], maxDp
     for (const l of layers) l.resize?.(vp, dpr);
   }
 
-  function render(colours: Resolved, light: Light, t: number) {
-    frame.colours = colours; frame.light = light; frame.t = t;
+  function render(colours: Resolved, light: Light, t: number, alpha: number) {
+    frame.colours = colours; frame.light = light; frame.t = t; frame.alpha = alpha;
     if (backVersion !== colours.version) {
       backVersion = colours.version;
       bctx.setTransform(dpr * vp.scale, 0, 0, dpr * vp.scale, vp.ox * dpr, vp.oy * dpr);
@@ -56,7 +56,7 @@ export function createRenderer(canvas: HTMLCanvasElement, layers: Layer[], maxDp
   }
 
   function profile(colours: Resolved, light: Light, t: number) {
-    frame.colours = colours; frame.light = light; frame.t = t;
+    frame.colours = colours; frame.light = light; frame.t = t; frame.alpha = 1;
     ctx.setTransform(dpr * vp.scale, 0, 0, dpr * vp.scale, vp.ox * dpr, vp.oy * dpr);
     const out: Record<string, number> = {};
     for (const l of layers) {

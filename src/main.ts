@@ -10,6 +10,7 @@ import { createRng } from './core/random';
 import { sunPosition } from './astronomy/sun';
 import { moonState } from './astronomy/moon';
 import { createClock } from './time';
+import { WindField } from './wind/field';
 
 const params = new URLSearchParams(location.search);
 const location_ = {
@@ -31,7 +32,12 @@ installGrain(createRng(SEED));
 const weather = {
   cloudCover: Number(params.get('cloud') ?? 0.35),
   fog: Number(params.get('fog') ?? 0.08),
+  windSpeed: Number(params.get('wind') ?? 4),
+  windDir: Number(params.get('dir') ?? 240),
+  windGust: Number(params.get('gust') ?? NaN),
 };
+const wind = new WindField(createRng(SEED));
+wind.configure(weather.windSpeed, weather.windDir, Number.isNaN(weather.windGust) ? weather.windSpeed * 1.6 : weather.windGust);
 const light = blankLight();
 const palette = seasonPalette(dayOfYear(clock.now()));
 let t = 0;
@@ -39,9 +45,10 @@ let t = 0;
 startLoop({
   update(dt) {
     t += dt;
-    for (const l of layers) l.update?.(dt, t);
+    wind.update(dt);
+    for (const l of layers) l.update?.(dt, t, wind);
   },
-  render() {
+  render(alpha) {
     const now = clock.now();
     sunPosition(now, location_.lat, location_.lon, sun);
     moonState(now, location_.lat, location_.lon, moon);
@@ -51,13 +58,13 @@ startLoop({
       cloudCover: weather.cloudCover, fog: weather.fog,
       moonElevation: moon.elevation, moonFraction: moon.fraction,
     }, light);
-    renderer.render(resolve(palette, light), light, t);
+    renderer.render(resolve(palette, light), light, t, alpha);
   },
 });
 
 if (import.meta.env.DEV) {
   import('./dev/devPanel').then((m) => m.installDevPanel(canvas, clock, () => ({ sun, moon, light })));
   (window as unknown as { __yonder: unknown }).__yonder = {
-    layers, renderer, clock, profile: () => renderer.profile(resolve(palette, light), light, t),
+    layers, renderer, clock, wind, profile: () => renderer.profile(resolve(palette, light), light, t),
   };
 }
