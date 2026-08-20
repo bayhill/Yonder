@@ -3,6 +3,7 @@ import type { Layer } from './layer';
 import { skyLayer } from './layers/sky';
 import { createStars } from './layers/stars';
 import { createMoon } from './layers/moon';
+import { createClouds } from './layers/clouds';
 import type { MoonState } from '../astronomy/moon';
 import { createFarHills } from './layers/farHills';
 import { createFarTreeline } from './layers/farTreeline';
@@ -12,7 +13,7 @@ import { createGrassBand } from './layers/grass';
 import { groundTop, LAYOUT, WORLD } from './composition';
 
 /** Assembles the depth-ordered layer stack from one seed. */
-export function buildScene(seed: string, moon: MoonState): Layer[] {
+export function buildScene(seed: string, moon: MoonState, cloudCover: () => number): Layer[] {
   const rng = createRng(seed);
   const gt = groundTop;
 
@@ -49,6 +50,7 @@ export function buildScene(seed: string, moon: MoonState): Layer[] {
     skyLayer,
     createStars(rng),
     createMoon(moon),
+    createClouds(rng, cloudCover),
     createFarHills(rng),
     createFarTreeline(rng),
     createGround(rng),

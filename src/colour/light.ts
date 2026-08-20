@@ -36,6 +36,8 @@ export interface Light {
   shadowLength: number;
   sunElevation: number;
   sunAzimuth: number;
+  /** Cloud cover 0..1, for sky flattening and cloud colours. */
+  cloud: number;
 }
 
 export function computeLight(i: LightInput, out: Light = blankLight()): Light {
@@ -80,10 +82,11 @@ export function computeLight(i: LightInput, out: Light = blankLight()): Light {
   out.shadowLength = Math.min(8, 1 / Math.tan(elRad));
   out.sunElevation = el;
   out.sunAzimuth = i.sunAzimuth;
+  out.cloud = cloud;
   return out;
 }
 
 export const blankLight = (): Light => ({
   brightness: 1, warmth: 0, saturation: 1, dirX: 0.5, contrast: 0.5, haze: 0.3, skyDark: 0, lift: 0,
-  twilightGlow: 0, sunGlow: 0, stars: 0, moon: 0, shadowLength: 2, sunElevation: 20, sunAzimuth: 200,
+  twilightGlow: 0, sunGlow: 0, stars: 0, moon: 0, shadowLength: 2, sunElevation: 20, sunAzimuth: 200, cloud: 0,
 });

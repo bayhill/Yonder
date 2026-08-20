@@ -19,6 +19,8 @@ export interface Resolved {
   sky: { zenith: string; mid: string; horizon: string; glow: string; sunGlow: string };
   /** Moon disc and its shadowed side. */
   moon: { lit: string; dark: string };
+  /** Cloud colours: sunlit tops and shaded undersides. */
+  cloud: { lit: string; shade: string };
   star: string;
   /** Increments whenever colours actually change; cached layers compare it. */
   readonly version: number;
@@ -30,6 +32,7 @@ export function createResolver() {
   const atmosTable: Record<Role, string[]> = Object.fromEntries(ROLES.map((r) => [r, new Array(DEPTHS + 1).fill('#000')])) as Record<Role, string[]>;
   const sky = { zenith: '#000', mid: '#000', horizon: '#000', glow: '#000', sunGlow: '#000' };
   const moon = { lit: '#000', dark: '#000' };
+  const cloud = { lit: '#000', shade: '#000' };
   const skyZ: Oklch = { l: 0, c: 0, h: 0 }, skyH: Oklch = { l: 0, c: 0, h: 0 };
   const tmp: Oklch = { l: 0, c: 0, h: 0 };
   let lastKey = '';
@@ -42,6 +45,7 @@ export function createResolver() {
     atmos: (r, depth) => atmosTable[r][Math.round(clamp01(depth) * DEPTHS)],
     sky,
     moon,
+    cloud,
     star: '#000',
   } as Resolved & { star: string };
 
@@ -70,7 +74,7 @@ export function createResolver() {
   }
 
   function resolve(palette: Palette, L: Light): Resolved {
-    const key = `${q(L.brightness)}|${q(L.lift)}|${q(L.warmth)}|${q(L.saturation)}|${q(L.contrast)}|${q(L.haze)}|${q(L.skyDark)}|${q(L.twilightGlow)}|${q(L.sunGlow)}|${q(palette.foliage.l)}|${q(palette.foliage.h / 360)}|${q(palette.skyZenith.l)}`;
+    const key = `${q(L.brightness)}|${q(L.lift)}|${q(L.cloud)}|${q(L.warmth)}|${q(L.saturation)}|${q(L.contrast)}|${q(L.haze)}|${q(L.skyDark)}|${q(L.twilightGlow)}|${q(L.sunGlow)}|${q(palette.foliage.l)}|${q(palette.foliage.h / 360)}|${q(palette.skyZenith.l)}`;
     if (key === lastKey) return resolved;
     lastKey = key;
     version++;
@@ -102,6 +106,10 @@ export function createResolver() {
     applySky(palette.skyHorizon, L, skyH);
     mix(skyZ, NIGHT_ZENITH, Math.pow(L.skyDark, 0.9), skyZ);
     mix(skyH, NIGHT_HORIZON, Math.pow(L.skyDark, 1.3), skyH);
+    // Overcast flattens the sky: zenith drifts toward the horizon tone and both lose chroma.
+    mix(skyZ, skyH, L.cloud * 0.45, skyZ);
+    skyZ.c *= 1 - L.cloud * 0.5; skyH.c *= 1 - L.cloud * 0.35;
+    skyZ.l -= L.cloud * 0.06 * (1 - L.skyDark);
     sky.zenith = toHex(skyZ);
     sky.horizon = toHex(mix(skyH, TWILIGHT_WARM, L.twilightGlow * 0.55, tmp));
     sky.mid = toHex(mix(skyZ, skyH, 0.5, tmp));
@@ -109,6 +117,15 @@ export function createResolver() {
     sky.glow = toHex(adjust(tmp, 0.01, 0.01, 0, tmp));
     mix(skyH, SUN_WARM, 0.35 + L.twilightGlow * 0.5, tmp);
     sky.sunGlow = toHex(adjust(tmp, 0.06 * (1 - L.skyDark), 0.02, 0, tmp));
+    // Clouds: tops near white by day, warmed at twilight, dark blue-grey at night; the deck
+    // greys down as cover grows. Undersides are a cooler, darker grey.
+    mix(CLOUD_LIT, skyH, 0.12 + L.cloud * 0.25, tmp);
+    mix(tmp, TWILIGHT_WARM, L.twilightGlow * 0.5, tmp);
+    tmp.l = tmp.l * (1 - L.skyDark * 0.78) * (1 - L.cloud * 0.12);
+    cloud.lit = toHex(tmp);
+    mix(CLOUD_SHADE, skyZ, 0.3, tmp);
+    tmp.l = tmp.l * (1 - L.skyDark * 0.8) * (1 - L.cloud * 0.22);
+    cloud.shade = toHex(tmp);
     moon.lit = toHex(mix(MOON, skyH, 0.15, tmp));
     moon.dark = toHex(mix(skyZ, MOON, 0.06, tmp));
     resolved.star = toHex(mix(STAR, skyZ, 0.2, tmp));
@@ -125,6 +142,8 @@ const NIGHT_ZENITH: Oklch = { l: 0.16, c: 0.030, h: 262 };
 const NIGHT_HORIZON: Oklch = { l: 0.27, c: 0.030, h: 250 };
 const TWILIGHT_WARM: Oklch = { l: 0.72, c: 0.11, h: 48 };
 const SUN_WARM: Oklch = { l: 0.86, c: 0.070, h: 70 };
+const CLOUD_LIT: Oklch = { l: 0.95, c: 0.008, h: 80 };
+const CLOUD_SHADE: Oklch = { l: 0.70, c: 0.018, h: 245 };
 const MOON: Oklch = { l: 0.93, c: 0.012, h: 95 };
 const STAR: Oklch = { l: 0.92, c: 0.01, h: 90 };
 /** Some roles want a quieter ramp than others. */

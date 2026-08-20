@@ -22,12 +22,6 @@ const clock = createClock(params);
 const moon = moonState(clock.now(), location_.lat, location_.lon);
 const sun = sunPosition(clock.now(), location_.lat, location_.lon);
 
-const canvas = document.getElementById('scene') as HTMLCanvasElement;
-const layers = buildScene(SEED, moon).filter((l) => !params.has('skip') || !params.get('skip')!.split(',').some((n) => l.name.startsWith(n)));
-const renderer = createRenderer(canvas, layers);
-const resolve = createResolver();
-installGrain(createRng(SEED));
-
 // Step 2: weather is still fixed; light and season follow the scene clock.
 const weather = {
   cloudCover: Number(params.get('cloud') ?? 0.35),
@@ -38,6 +32,12 @@ const weather = {
 };
 const wind = new WindField(createRng(SEED));
 wind.configure(weather.windSpeed, weather.windDir, Number.isNaN(weather.windGust) ? weather.windSpeed * 1.6 : weather.windGust);
+const canvas = document.getElementById('scene') as HTMLCanvasElement;
+const layers = buildScene(SEED, moon, () => weather.cloudCover).filter((l) => !params.has('skip') || !params.get('skip')!.split(',').some((n) => l.name.startsWith(n)));
+const renderer = createRenderer(canvas, layers);
+const resolve = createResolver();
+installGrain(createRng(SEED));
+
 const light = blankLight();
 const palette = seasonPalette(dayOfYear(clock.now()));
 let t = 0;
