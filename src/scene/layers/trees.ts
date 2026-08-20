@@ -55,22 +55,38 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
       const c = f.colours;
       const dirX = f.light.dirX;
       const a = f.alpha;
-      // Soft ground shadows first, so every trunk stands on its own shadow.
-      const shadowAlpha = 0.22 * f.light.contrast;
+      // Ground shadows first, so every trunk stands on its own shadow. At low sun the canopy's
+      // shadow is laid out across the meadow, away from the light, fading with distance.
+      const shadowAlpha = 0.2 * f.light.contrast;
       if (shadowAlpha > 0.01) {
-        ctx.fillStyle = c.ramp('ground')[0];
+        const L = f.light.shadowLength;
         for (const t of trees) {
           if (t.depth > 0.35) continue;
-          const len = Math.min(t.height * 1.4, t.height * 0.35 * f.light.shadowLength);
-          const cx = t.x - dirX * len * 0.5, cy = t.y + 6;
-          const g = ctx.createRadialGradient(t.x, cy, 0, cx, cy, len * 0.6);
+          const len = Math.min(t.height * 1.7, t.height * 0.42 * L);   // ground distance of the crown's shadow
+          const ex = -dirX * len, ey = len * 0.07;                     // direction of the shadow on the ground
+          const g = ctx.createLinearGradient(t.x, t.y, t.x + ex, t.y + ey);
           g.addColorStop(0, c.ramp('ground')[0]);
           g.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = g;
           ctx.globalAlpha = shadowAlpha;
+          // trunk: a thin wedge
           ctx.beginPath();
-          ctx.ellipse(cx, cy, len * 0.6 + t.height * 0.08, t.height * 0.05, 0, 0, Math.PI * 2);
+          ctx.moveTo(t.x - 4, t.y + 2); ctx.lineTo(t.x + 4, t.y + 2);
+          ctx.lineTo(t.x + ex * 0.8 + 2, t.y + ey * 0.8 + 3); ctx.lineTo(t.x + ex * 0.8 - 2, t.y + ey * 0.8 + 3);
+          ctx.closePath(); ctx.fill();
+          // canopy: every other foliage mass projected onto the ground as a flattened ellipse
+          ctx.beginPath();
+          for (let bi = 0; bi < t.foliage.length; bi += 2) {
+            const b = t.foliage[bi];
+            const sH = (t.y - b.y) / t.height;                 // height fraction of this mass
+            const px = t.x + (b.x - t.x) * 0.9 + ex * sH, py = t.y + 3 + ey * sH + (b.y - t.y) * 0.02;
+            const rx = Math.abs(b.verts[0]) * 1.3 + 6, ry = rx * 0.22;
+            ctx.moveTo(px + rx, py);
+            ctx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+          }
           ctx.fill();
+          // a little pooled darkness at the foot
+          ctx.beginPath(); ctx.ellipse(t.x, t.y + 4, t.height * 0.08, t.height * 0.02, 0, 0, Math.PI * 2); ctx.fill();
         }
         ctx.globalAlpha = 1;
       }

@@ -9,9 +9,18 @@ import type { WindField, WindSample } from '../../wind/field';
  * One band of individually drawn blades. Blades are grouped by tone so each frame does 5 fills.
  * `amp` is how far a full-strength wind bends a blade, as a fraction of its height.
  */
-export function createGrassBand(spec: BandSpec, role: Role, depth: number, rng: Rng, amp = 0.55): Layer & { band: GrassBand } {
+export interface GrassOptions {
+  /** Roots in shadow: a soft darkening over the lower part of the band, 0..1 strength. */
+  rootShade?: number;
+  /** World x-range to draw (culling outside the viewport is done per frame). */
+}
+
+export function createGrassBand(spec: BandSpec, role: Role, depth: number, rng: Rng, amp = 0.55, opts: GrassOptions = {}): Layer & { band: GrassBand } {
   const band = generateBand(spec, rng);
   const bend = new Float32Array(band.count);
+  const toneNow = new Uint8Array(band.count);
+  const bandTop = Math.min(spec.y0(400), spec.y0(1200)), bandBottom = Math.max(spec.y1(400), spec.y1(1200));
+  const rootShade = opts.rootShade ?? 0;
   const ws: WindSample = { bend: 0, flutter: 0 };
   let t = 0;
   return {
@@ -25,6 +34,13 @@ export function createGrassBand(spec: BandSpec, role: Role, depth: number, rng: 
         bend[i] = ws.bend + ws.flutter * 0.08 * Math.sin(t * 9 + band.phase[i]);
       }
       stepBand(band, dt, bend, amp);
+      // Silver waves: a blade bent well past its rest shows its paler side, so a gust reads as a
+      // light wave crossing the field rather than as geometry alone.
+      for (let i = 0; i < band.count; i++) {
+        const r = (band.tipX[i] - band.lean[i]) / (band.h[i] * amp + 1e-6);
+        const k = band.tone[i] + (r > 0.42 || r < -0.42 ? 1 : 0);
+        toneNow[i] = k > 4 ? 4 : k;
+      }
     },
     draw(ctx, f: Frame) {
       const ramp = f.colours.ramp(role);
@@ -33,16 +49,30 @@ export function createGrassBand(spec: BandSpec, role: Role, depth: number, rng: 
       // Snow buries the meadow: blades shorten as the blanket rises, and bend a little under the load.
       const g = f.season.grass * (1 - (depth > 0.2 ? 0.8 : 0.55) * Math.min(1, cover));
       const sag = 1 + 0.35 * Math.min(1, cover);
+      const x0 = f.vp.left - 160, x1 = f.vp.right + 160;
       for (let k = 0; k < RAMP; k++) {
         ctx.fillStyle = depth > 0 ? f.colours.atmos(role, depth + (k - 2) * -0.05) : ramp[k];
         ctx.beginPath();
         for (let i = 0; i < band.count; i++) {
-          if (band.tone[i] !== k) continue;
+          if (toneNow[i] !== k) continue;
+          const bx = band.x[i];
+          if (bx < x0 || bx > x1) continue;
           const tx = (band.prevX[i] + (band.tipX[i] - band.prevX[i]) * a) * g * sag;
           const ty = (band.prevY[i] + (band.tipY[i] - band.prevY[i]) * a) * g;
           bladePath(ctx, band.x[i], band.y[i], band.w[i] * (0.8 + 0.2 * g), tx, ty);
         }
         ctx.fill();
+      }
+      if (rootShade > 0) {
+        const top = bandTop + (bandBottom - bandTop) * 0.35;
+        const g = ctx.createLinearGradient(0, top, 0, bandBottom);
+        const c = f.colours.ramp('ground')[0];
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(1, c);
+        ctx.globalAlpha = rootShade * (0.14 + 0.1 * f.light.contrast) * (1 - Math.min(1, cover) * 0.8);
+        ctx.fillStyle = g;
+        ctx.fillRect(f.vp.left, top, f.vp.right - f.vp.left, bandBottom - top);
+        ctx.globalAlpha = 1;
       }
       // Snow caps on the tips of the nearer blades.
       if (cover > 0.12 && depth <= 0.2) {

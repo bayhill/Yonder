@@ -4,6 +4,7 @@ import { skyLayer } from './layers/sky';
 import { sunLayer } from './layers/sun';
 import { createBirds } from './layers/birds';
 import { createPost } from './layers/post';
+import { createFlowers } from './layers/flowers';
 import { createStars } from './layers/stars';
 import { createMoon } from './layers/moon';
 import { createClouds } from './layers/clouds';
@@ -44,13 +45,13 @@ export function buildScene(seed: string, moon: MoonState, cloudCover: () => numb
     count: 900, x0: -30, x1: WORLD.w + 30,
     y0: (x) => gt(x) + 70, y1: () => 790,
     hMin: 28, hMax: 62, wMin: 2.8, wMax: 5.2, perspective: 1.0, leanBias: 0.06, clump: 0.55,
-  }, 'grassNear', 0.12, rng.fork('midGrass'), 0.8);
+  }, 'grassNear', 0.12, rng.fork('midGrass'), 0.8, { rootShade: 0.8 });
 
   const frontGrass = createGrassBand({
     count: 480, x0: -60, x1: WORLD.w + 60,
     y0: () => 795, y1: () => WORLD.h + 30,
     hMin: 70, hMax: 150, wMin: 4.5, wMax: 8, perspective: 0.9, leanBias: 0.07, clump: 0.6,
-  }, 'grassNear', 0, rng.fork('frontGrass'), 0.85);
+  }, 'grassNear', 0, rng.fork('frontGrass'), 0.85, { rootShade: 1 });
 
   const treeline = createFarTreeline(rng);
   return [
@@ -72,6 +73,7 @@ export function buildScene(seed: string, moon: MoonState, cloudCover: () => numb
     nearTrees,
     createPost(rng),
     midGrass,
+    createFlowers(rng),
     createSnowSheet(rng, 'near'),
     frontGrass,
     createSnow(rng, 'near'),

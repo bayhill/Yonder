@@ -21,14 +21,16 @@ const KEYS: Array<[number, Palette]> = [
  *  leaf  0..1 — birch foliage (leaf-out early May, gold then bare late October)
  *  grass 0..1 — meadow height (flattened and short through winter, tall from midsummer)
  */
-export interface SeasonParams { leaf: number; grass: number }
+export interface SeasonParams { leaf: number; grass: number; /** 0..1 midsummer wildflowers */ bloom: number }
 const LEAF: Array<[number, number]> = [[0, 0], [112, 0], [128, 0.35], [150, 1], [278, 1], [296, 0.55], [312, 0.05], [365, 0]];
+const BLOOM: Array<[number, number]> = [[0, 0], [152, 0], [168, 0.6], [190, 1], [215, 0.75], [238, 0.2], [255, 0], [365, 0]];
 const GRASS: Array<[number, number]> = [[0, 0.62], [95, 0.62], [140, 0.85], [175, 1], [265, 1], [320, 0.78], [365, 0.62]];
 
-export function seasonParams(doy: number, out: SeasonParams = { leaf: 1, grass: 1 }): SeasonParams {
+export function seasonParams(doy: number, out: SeasonParams = { leaf: 1, grass: 1, bloom: 0 }): SeasonParams {
   const d = ((doy % 365) + 365) % 365;
   out.leaf = track(LEAF, d);
   out.grass = track(GRASS, d);
+  out.bloom = track(BLOOM, d);
   return out;
 }
 function track(keys: Array<[number, number]>, d: number): number {

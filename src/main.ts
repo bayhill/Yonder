@@ -26,6 +26,7 @@ import { createLabel } from './ui/label';
 import { createTimeline } from './ui/timeline';
 import { createBrowserChrome } from './ui/chrome';
 import { describeScene } from './ui/describe';
+import { createCurtain } from './ui/curtain';
 
 const params = new URLSearchParams(location.search);
 const place: Location = {
@@ -67,7 +68,9 @@ const store = createWeatherStore(REFRESH_MINUTES, (s) => {
   series = s;
   track = buildTrack(s);
   if (first && source.mode === 'live') { updateTargets(clock.now().getTime()); smoothed.snap(); syncAccumulation(true); }
+  if (first) curtain.raise(150);
 });
+setTimeout(() => curtain.raise(), 1500);   // no data yet (offline, first visit): arrive anyway
 
 function updateTargets(time: number) {
   if (source.mode === 'manual' || !series) { Object.assign(target, manual); return; }
@@ -88,6 +91,7 @@ const resolve = createResolver();
 installGrain(createRng(SEED));
 
 // --- ui ---
+const curtain = createCurtain();
 const overlay = createOverlay(document.getElementById('overlay') as HTMLElement);
 const label = createLabel(overlay.root, overlay.hold, (loc) => setPlace(loc));
 const sunProbe = { elevation: 0, azimuth: 0 };
@@ -96,6 +100,9 @@ label.setLocation(place);
 const browserChrome = createBrowserChrome();
 
 function setPlace(loc: Location) {
+  void curtain.through(() => applyPlace(loc));
+}
+function applyPlace(loc: Location) {
   Object.assign(place, loc);
   const p = new URLSearchParams(location.search);
   p.set('lat', loc.lat.toFixed(3)); p.set('lon', loc.lon.toFixed(3)); p.set('name', loc.name);

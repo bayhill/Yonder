@@ -34,7 +34,7 @@ export function createRenderer(canvas: HTMLCanvasElement, layers: Layer[], maxDp
   }
   const vp = fitViewport(1, 1);
   let dpr = 1;
-  const frame: Frame = { colours: null as unknown as Resolved, light: null as unknown as Light, vp, t: 0, alpha: 1, season: { leaf: 1, grass: 1 }, weather: { rain: 0, snow: 0, temperature: 15, fog: 0, cloudCover: 0, snowCover: 0, wet: 0 }, dpr: 1 };
+  const frame: Frame = { colours: null as unknown as Resolved, light: null as unknown as Light, vp, t: 0, alpha: 1, season: { leaf: 1, grass: 1, bloom: 0 }, weather: { rain: 0, snow: 0, temperature: 15, fog: 0, cloudCover: 0, snowCover: 0, wet: 0 }, dpr: 1 };
 
   function resize() {
     const fixed = new URLSearchParams(location.search).get('vp')?.split('x').map(Number);
