@@ -7,7 +7,7 @@ export function createOverlay(root: HTMLElement) {
   root.innerHTML = '';
   root.style.cssText = 'position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity 400ms ease;' +
     'font:300 13px/1.4 "Helvetica Neue",Inter,system-ui,sans-serif;letter-spacing:.02em;color:var(--ink,rgba(255,255,255,.72))';
-  let shown = false, hideAt = 0, held = 0;
+  let shown = false, hideAt = 0, held = 0, lastInk = '';
   const show = () => { shown = true; root.style.opacity = '1'; hideAt = performance.now() + 3000; };
   const tick = () => {
     if (shown && held === 0 && performance.now() > hideAt) { shown = false; root.style.opacity = '0'; }
@@ -26,7 +26,8 @@ export function createOverlay(root: HTMLElement) {
     /** Ink colour follows scene brightness: dark caption by day, pale by night. */
     setInk(brightness: number) {
       const day = Math.min(1, Math.max(0, (brightness - 0.35) / 0.45));
-      root.style.setProperty('--ink', day > 0.5 ? `rgba(18,26,32,${0.38 + 0.2 * day})` : `rgba(240,244,246,${0.5 + 0.25 * (1 - day)})`);
+      const ink = day > 0.5 ? `rgba(18,26,32,${(0.38 + 0.2 * day).toFixed(2)})` : `rgba(240,244,246,${(0.5 + 0.25 * (1 - day)).toFixed(2)})`;
+      if (ink !== lastInk) { lastInk = ink; root.style.setProperty('--ink', ink); }
     },
   };
 }

@@ -22,9 +22,33 @@ export function createLabel(parent: HTMLElement, hold: (on: boolean) => void, on
   parent.appendChild(box);
 
   let ctrl: AbortController | null = null;
+  function row(text: string, onPick: () => void) {
+    const el = document.createElement('div');
+    el.textContent = text;
+    el.style.cssText = 'cursor:pointer;opacity:.75;padding:2px 0';
+    el.addEventListener('mouseenter', () => (el.style.opacity = '1'));
+    el.addEventListener('mouseleave', () => (el.style.opacity = '.75'));
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); onPick(); });
+    return el;
+  }
+  function here() {
+    if (!('geolocation' in navigator)) return;
+    input.placeholder = '…';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        onLocation({ name: coordName(lat, lon), lat, lon });
+        close();
+      },
+      () => { input.placeholder = 'a place'; },
+      { maximumAge: 600e3, timeout: 8000 },
+    );
+  }
   function open() {
     name.style.display = 'none'; time.style.display = 'none';
-    input.style.display = 'inline-block'; input.value = ''; input.focus();
+    input.style.display = 'inline-block'; input.value = ''; input.placeholder = 'a place'; input.focus();
+    list.innerHTML = '';
+    if ('geolocation' in navigator) { list.appendChild(row('here', here)); list.style.display = 'block'; }
     hold(true);
   }
   function close() {
@@ -41,15 +65,7 @@ export function createLabel(parent: HTMLElement, hold: (on: boolean) => void, on
     try {
       const results = await geocode(q, ctrl.signal);
       list.innerHTML = '';
-      for (const r of results.slice(0, 4)) {
-        const row = document.createElement('div');
-        row.textContent = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
-        row.style.cssText = 'cursor:pointer;opacity:.75;padding:2px 0';
-        row.addEventListener('mouseenter', () => (row.style.opacity = '1'));
-        row.addEventListener('mouseleave', () => (row.style.opacity = '.75'));
-        row.addEventListener('click', () => choose(r));
-        list.appendChild(row);
-      }
+      for (const r of results.slice(0, 4)) list.appendChild(row([r.name, r.admin1, r.country].filter(Boolean).join(', '), () => choose(r)));
       list.style.display = results.length ? 'block' : 'none';
       if (results.length === 1) choose(results[0]);
     } catch { /* keep the list as it was */ }
@@ -62,7 +78,7 @@ export function createLabel(parent: HTMLElement, hold: (on: boolean) => void, on
     if (e.key === 'Escape') close();
     if (e.key === 'Enter' && input.value.trim()) void search(input.value.trim());
   });
-  input.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input && list.style.display === 'none') close(); }, 150));
+  input.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== input) close(); }, 150));
 
   const fmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
   const fmtDay = new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -71,4 +87,9 @@ export function createLabel(parent: HTMLElement, hold: (on: boolean) => void, on
     /** Shows the time; adds the weekday when the scene is not "now". */
     setTime(d: Date, isNow: boolean) { time.textContent = isNow ? fmt.format(d) : fmtDay.format(d); },
   };
+}
+
+/** A quiet caption for an unnamed point: 59.8°N 18.7°E. */
+export function coordName(lat: number, lon: number): string {
+  return `${Math.abs(lat).toFixed(1)}°${lat >= 0 ? 'N' : 'S'} ${Math.abs(lon).toFixed(1)}°${lon >= 0 ? 'E' : 'W'}`;
 }

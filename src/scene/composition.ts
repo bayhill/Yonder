@@ -8,6 +8,8 @@ export const WORLD = { w: 1600, h: 900 } as const;
 export const LAYOUT = {
   horizonY: 548,          // base horizon height at the left edge
   mainTreeX: 1010,
+  /** Centre of the near group (birch + pine); portrait crops keep both. */
+  groupX: 1085,
   anchorY: 600,           // vertical anchor when the viewport is wider than 16:9
 } as const;
 
@@ -36,7 +38,7 @@ export interface Viewport {
 export function fitViewport(cw: number, ch: number, out: Viewport = blankViewport()): Viewport {
   const scale = Math.max(cw / WORLD.w, ch / WORLD.h);
   const visW = cw / scale, visH = ch / scale;
-  const left = clamp(LAYOUT.mainTreeX - visW * 0.52, 0, WORLD.w - visW);
+  const left = clamp(LAYOUT.groupX - visW * 0.5, 0, WORLD.w - visW);
   const top = clamp(LAYOUT.anchorY - visH * 0.6, 0, WORLD.h - visH);
   out.cw = cw; out.ch = ch; out.scale = scale;
   out.ox = -left * scale; out.oy = -top * scale;

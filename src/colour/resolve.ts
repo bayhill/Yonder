@@ -24,6 +24,8 @@ export interface Resolved {
   rain: string;
   snowFlake: string;
   star: string;
+  /** The low sun's disc: pale, warm, never glaring. */
+  sunDisc: string;
   /** Increments whenever colours actually change; cached layers compare it. */
   readonly version: number;
 }
@@ -51,7 +53,8 @@ export function createResolver() {
     star: '#000',
     rain: '#000',
     snowFlake: '#000',
-  } as Resolved & { star: string; rain: string; snowFlake: string };
+    sunDisc: '#000',
+  } as Resolved & { star: string; rain: string; snowFlake: string; sunDisc: string };
 
   function applyLight(p: Oklch, L: Light, out: Oklch): Oklch {
     out.l = clamp01(p.l * L.brightness + L.lift);
@@ -79,7 +82,7 @@ export function createResolver() {
   }
 
   function resolve(palette: Palette, L: Light): Resolved {
-    const key = `${q(L.brightness)}|${q(L.lift)}|${q(L.cloud)}|${q(L.wet)}|${q(L.warmth)}|${q(L.saturation)}|${q(L.contrast)}|${q(L.haze)}|${q(L.skyDark)}|${q(L.twilightGlow)}|${q(L.sunGlow)}|${q(palette.foliage.l)}|${q(palette.foliage.h / 360)}|${q(palette.skyZenith.l)}`;
+    const key = `${q(L.brightness)}|${q(L.lift)}|${q(L.cloud)}|${q(L.wet)}|${q(L.snowCover)}|${q(L.warmth)}|${q(L.saturation)}|${q(L.contrast)}|${q(L.haze)}|${q(L.skyDark)}|${q(L.twilightGlow)}|${q(L.sunGlow)}|${q(palette.foliage.l)}|${q(palette.foliage.h / 360)}|${q(palette.skyZenith.l)}`;
     if (key === lastKey) return resolved;
     lastKey = key;
     version++;
@@ -113,6 +116,10 @@ export function createResolver() {
     applySky(palette.skyHorizon, L, skyH);
     mix(skyZ, NIGHT_ZENITH, Math.pow(L.skyDark, 0.9), skyZ);
     mix(skyH, NIGHT_HORIZON, Math.pow(L.skyDark, 1.3), skyH);
+    // Snow on the ground lights the underside of a night cloud deck: overcast winter nights are
+    // noticeably pale, never darker than clear ones.
+    const snowGlow = L.skyDark * L.snowCover * (0.02 + 0.07 * L.cloud);
+    skyZ.l += snowGlow; skyH.l += snowGlow * 1.3;
     // Overcast flattens the sky: zenith drifts toward the horizon tone and both lose chroma.
     mix(skyZ, skyH, L.cloud * 0.45, skyZ);
     skyZ.c *= 1 - L.cloud * 0.5; skyH.c *= 1 - L.cloud * 0.35;
@@ -128,14 +135,16 @@ export function createResolver() {
     // greys down as cover grows. Undersides are a cooler, darker grey.
     mix(CLOUD_LIT, skyH, 0.12 + L.cloud * 0.25, tmp);
     mix(tmp, TWILIGHT_WARM, L.twilightGlow * 0.5, tmp);
-    tmp.l = tmp.l * (1 - L.skyDark * 0.78) * (1 - L.cloud * 0.12);
+    tmp.l = (tmp.l * (1 - L.skyDark * 0.72) + snowGlow * 1.5) * (1 - L.cloud * 0.12);
     cloud.lit = toHex(tmp);
     mix(CLOUD_SHADE, skyZ, 0.3, tmp);
-    tmp.l = tmp.l * (1 - L.skyDark * 0.8) * (1 - L.cloud * 0.22);
+    tmp.l = (tmp.l * (1 - L.skyDark * 0.74) + snowGlow * 1.5) * (1 - L.cloud * 0.22);
     cloud.shade = toHex(tmp);
     moon.lit = toHex(mix(MOON, skyH, 0.15, tmp));
     moon.dark = toHex(mix(skyZ, MOON, 0.06, tmp));
     resolved.star = toHex(mix(STAR, skyZ, 0.2, tmp));
+    mix(SUN_DISC, TWILIGHT_WARM, L.twilightGlow * 0.45, tmp); tmp.l = Math.min(0.97, tmp.l + 0.04 * (1 - L.twilightGlow));
+    resolved.sunDisc = toHex(tmp);
     resolved.rain = toHex(mix(lit.farAtmosphere, skyH, 0.5, tmp));
     mix(lit.snow, skyH, 0.12, tmp); tmp.l = Math.max(tmp.l, lit.farAtmosphere.l + 0.04);
     resolved.snowFlake = toHex(tmp);
@@ -148,10 +157,11 @@ export function createResolver() {
 const q = (v: number) => Math.round(v * 200);
 const WARM: Oklch = { l: 0.7, c: 0.1, h: 75 };
 const COOL: Oklch = { l: 0.3, c: 0.035, h: 255 };
-const NIGHT_ZENITH: Oklch = { l: 0.16, c: 0.030, h: 262 };
-const NIGHT_HORIZON: Oklch = { l: 0.27, c: 0.030, h: 250 };
+const NIGHT_ZENITH: Oklch = { l: 0.21, c: 0.032, h: 262 };
+const NIGHT_HORIZON: Oklch = { l: 0.31, c: 0.030, h: 250 };
 const TWILIGHT_WARM: Oklch = { l: 0.72, c: 0.11, h: 48 };
 const SUN_WARM: Oklch = { l: 0.86, c: 0.070, h: 70 };
+const SUN_DISC: Oklch = { l: 0.95, c: 0.045, h: 78 };
 const CLOUD_LIT: Oklch = { l: 0.95, c: 0.008, h: 80 };
 const CLOUD_SHADE: Oklch = { l: 0.70, c: 0.018, h: 245 };
 const MOON: Oklch = { l: 0.93, c: 0.012, h: 95 };

@@ -1,6 +1,7 @@
 import { createNoise3D } from 'simplex-noise';
 import type { Rng } from '../core/random';
 import { clamp01 } from '../core/easing';
+import { motionScale } from '../core/motion';
 
 /**
  * Wind as a field, not a number. Sampled in world space and time:
@@ -25,11 +26,9 @@ export class WindField {
   /** Travel offsets for the gust field, in world px. */
   private gx = 0;
   private gy = 0;
-  private reduceMotion = 1;
 
   constructor(rng: Rng) {
     this.noise = createNoise3D(rng.fork('wind').next);
-    if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) this.reduceMotion = 0.35;
   }
 
   /** Meteorological input: speed and gust in m/s, direction the wind blows FROM in compass degrees. */
@@ -53,14 +52,15 @@ export class WindField {
   sample(x: number, y: number, out: WindSample): WindSample {
     const s = this.strength;
     const t = this.t;
+    const m = motionScale();
     const gust = this.noise((x - this.gx) * 0.0011, (y - this.gy) * 0.0022, t * 0.05);
     const gustUp = Math.max(0, gust + 0.15);
     const turb = this.noise(x * 0.0035, y * 0.006, t * 0.55);
     const idle = this.noise(x * 0.002 + 40, y * 0.003, t * 0.18) * 0.035;
     const flow = s * (0.5 + 0.7 * gustUp * (0.6 + 0.9 * this.gustiness)) + s * turb * 0.3;
-    out.bend = (this.dirX * flow + idle + turb * 0.02) * this.reduceMotion;
+    out.bend = (this.dirX * flow + idle + turb * 0.02) * m;
     // Flutter: fast small-scale agitation, only meaningful in stronger wind.
-    out.flutter = s * s * (0.5 + 0.5 * gustUp) * this.reduceMotion;
+    out.flutter = s * s * (0.5 + 0.5 * gustUp) * m;
     return out;
   }
 }

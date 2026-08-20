@@ -4,6 +4,7 @@ import type { Rng } from '../../core/random';
 import { createNoise4D } from 'simplex-noise';
 import type { WindField } from '../../wind/field';
 import { clamp01, smoothstep } from '../../core/easing';
+import { motionScale } from '../../core/motion';
 
 /**
  * Clouds as a density field at three altitudes.
@@ -92,20 +93,22 @@ export function createClouds(rng: Rng, cover: () => number): Layer {
   const offU = new Float32Array(ALTS.length), offV = new Float32Array(ALTS.length), morph = new Float32Array(ALTS.length);
   let lit: [number, number, number] = [240, 240, 240], shade: [number, number, number] = [170, 175, 185];
   let colourVersion = -1;
-  let lastCover = -1, dirty = true;
+  let lastCover = -1, dirty = true, frame = 0;
 
   return {
     name: 'clouds',
     update(dt, _t, wind: WindField) {
       // Scroll with the wind; higher layers move slower on screen; shapes morph slowly over time.
-      const s = 0.15 + wind.strength;
+      const s = (0.15 + wind.strength) * motionScale();
       for (let k = 0; k < ALTS.length; k++) {
         const a = ALTS[k];
         offU[k] += wind.dirX * s * a.speed * 7 * dt;
         offV[k] += s * a.speed * 1.2 * dt;
         morph[k] += dt * (0.9 + k * 0.3);
       }
-      dirty = true;
+      // The field moves a fraction of a pixel per step; rebuilding it at 20 Hz is invisible and
+      // keeps the heaviest layer at ~1 ms per frame on average.
+      if (++frame % 3 === 0) dirty = true;
     },
     draw(ctx, f: Frame) {
       const c = clamp01(cover());

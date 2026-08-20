@@ -1,6 +1,9 @@
 import { createRng } from '../core/random';
 import type { Layer } from './layer';
 import { skyLayer } from './layers/sky';
+import { sunLayer } from './layers/sun';
+import { createBirds } from './layers/birds';
+import { createPost } from './layers/post';
 import { createStars } from './layers/stars';
 import { createMoon } from './layers/moon';
 import { createClouds } from './layers/clouds';
@@ -54,8 +57,10 @@ export function buildScene(seed: string, moon: MoonState, cloudCover: () => numb
     skyLayer,
     createStars(rng),
     createMoon(moon),
+    sunLayer,
     createClouds(rng, cloudCover),
     createFarHills(rng),
+    createBirds(rng),
     treeline,
     createShimmer(treeline),
     createGround(rng),
@@ -65,6 +70,7 @@ export function buildScene(seed: string, moon: MoonState, cloudCover: () => numb
     fogLayer,
     backGrass,
     nearTrees,
+    createPost(rng),
     midGrass,
     createSnowSheet(rng, 'near'),
     frontGrass,

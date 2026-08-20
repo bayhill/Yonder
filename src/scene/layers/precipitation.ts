@@ -3,6 +3,7 @@ import { WORLD } from '../composition';
 import type { Rng } from '../../core/random';
 import type { WindField, WindSample } from '../../wind/field';
 import { smoothstep } from '../../core/easing';
+import { motionScale } from '../../core/motion';
 
 const ws: WindSample = { bend: 0, flutter: 0 };
 
@@ -24,8 +25,9 @@ export function createRain(rng: Rng, max = 420): Layer {
     update(dt, _t, wind: WindField) {
       wind.sample(WORLD.w / 2, 400, ws);
       dx = ws.bend * 380; // horizontal drift per second from the wind
+      const m = motionScale();
       for (let i = 0; i < active; i++) {
-        y[i] += spd[i] * dt; x[i] += dx * dt;
+        y[i] += spd[i] * m * dt; x[i] += dx * m * dt;
         if (y[i] > WORLD.h + 40) { y[i] = -60 - r.range(0, 80); x[i] = r.range(-200, WORLD.w + 200); }
         if (x[i] > WORLD.w + 220) x[i] -= WORLD.w + 440; else if (x[i] < -220) x[i] += WORLD.w + 440;
       }
@@ -77,9 +79,10 @@ export function createSnow(rng: Rng, band: 'far' | 'near', max = 360): Layer {
     update(dt, _t, wind: WindField) {
       t += dt;
       const sleet = smoothstep(0.5, 3, temp);
+      const m = motionScale();
       for (let i = 0; i < active; i++) {
         wind.sample(x[i], y[i], ws);
-        const fall = vy[i] * (1 + sleet * 4) * (near ? 1 : 0.8);
+        const fall = vy[i] * (1 + sleet * 4) * (near ? 1 : 0.8) * m;
         y[i] += fall * dt;
         x[i] += (ws.bend * (near ? 160 : 90) + Math.sin(t * 1.3 + ph[i]) * 9 * (1 - sleet)) * dt;
         if (y[i] > WORLD.h + 20) { y[i] = -30; x[i] = r.range(-100, WORLD.w + 100); }

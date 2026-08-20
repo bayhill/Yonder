@@ -15,16 +15,34 @@ export function createTimeline(parent: HTMLElement, clock: Clock, hold: (on: boo
   line.style.cssText = 'position:absolute;left:0;right:0;top:14px;height:1px;background:currentColor;opacity:.35';
   const marker = document.createElement('div');
   marker.style.cssText = 'position:absolute;top:10px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:currentColor;opacity:.85;transition:transform 200ms';
+  // Midnights as hairline ticks, so the two days ahead have a shape without a single word.
+  const ticks = document.createElement('div');
+  ticks.style.cssText = 'position:absolute;left:0;right:0;top:11px;height:7px;pointer-events:none';
   const label = document.createElement('div');
   label.style.cssText = 'position:absolute;top:-18px;transform:translateX(-50%);white-space:nowrap;font-size:12px;opacity:.8;font-variant-numeric:tabular-nums';
-  wrap.append(line, marker, label);
+  wrap.append(line, ticks, marker, label);
   parent.appendChild(wrap);
 
   let locked = false, dragging = false, returnAt = 0;
   const fmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
 
   const frac = () => Math.min(1, Math.max(0, clock.offsetMs / range));
+  let tickDay = -1;
+  function renderTicks() {
+    const base = Date.now();
+    const d = new Date(base);
+    if (d.getDate() === tickDay) return;
+    tickDay = d.getDate();
+    ticks.innerHTML = '';
+    d.setHours(24, 0, 0, 0);
+    for (let t = d.getTime(); t < base + range; t += 24 * H) {
+      const el = document.createElement('div');
+      el.style.cssText = `position:absolute;left:${((t - base) / range) * 100}%;top:0;width:1px;height:7px;background:currentColor;opacity:.45`;
+      ticks.appendChild(el);
+    }
+  }
   function render() {
+    renderTicks();
     const f = frac();
     marker.style.left = `${f * 100}%`;
     label.style.left = `${f * 100}%`;
@@ -64,10 +82,12 @@ export function createTimeline(parent: HTMLElement, clock: Clock, hold: (on: boo
     if (e.key === 'Escape') { locked = false; clock.reset(); onScrub(true); render(); }
   });
 
+  let lastOffset = clock.offsetMs;
   const tick = () => {
     if (!dragging && !locked && returnAt && performance.now() > returnAt) {
       returnAt = 0; clock.reset(); onScrub(true); render();
     }
+    if (clock.offsetMs !== lastOffset) { lastOffset = clock.offsetMs; render(); } // time moved elsewhere (keys, dev)
     requestAnimationFrame(tick);
   };
   tick();

@@ -24,5 +24,6 @@ export class SmoothedWeather {
     v.rain = approach(v.rain, t.rain, tau, dt);
     v.snow = approach(v.snow, t.snow, tau, dt);
     v.temperature = approach(v.temperature, t.temperature, tau, dt);
+    v.humidity = approach(v.humidity, t.humidity, tau, dt);
   }
 }

@@ -16,6 +16,7 @@ import { SmoothedWeather } from './weather/smoothed';
 import { Accumulation } from './weather/accumulation';
 import { controlsFromSample } from './weather/state';
 import { buildTrack, trackAt, type AccumulationTrack } from './weather/track';
+import { mistAmount } from './weather/mist';
 import { sampleAt, blank as blankSample } from './data/interpolate';
 import { createWeatherStore } from './data/store';
 import type { Location, WeatherSeries } from './data/types';
@@ -23,6 +24,7 @@ import type { FrameWeather } from './scene/layer';
 import { createOverlay } from './ui/overlay';
 import { createLabel } from './ui/label';
 import { createTimeline } from './ui/timeline';
+import { createBrowserChrome } from './ui/chrome';
 
 const params = new URLSearchParams(location.search);
 const place: Location = {
@@ -51,6 +53,13 @@ let track: AccumulationTrack | null = null;
 const sampleBuf = blankSample();
 const trackBuf = { snow: 0, wet: 0 };
 let scrubUntil = 0;                                    // smoothing is fast while scrubbing
+
+// Back from a long sleep: the sun has already moved, so the weather should simply be right too.
+let hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt > 10 * 60e3) { updateTargets(clock.now().getTime()); smoothed.snap(); syncAccumulation(true); }
+});
 
 const store = createWeatherStore(REFRESH_MINUTES, (s) => {
   const first = !series;
@@ -82,6 +91,7 @@ const overlay = createOverlay(document.getElementById('overlay') as HTMLElement)
 const label = createLabel(overlay.root, overlay.hold, (loc) => setPlace(loc));
 createTimeline(overlay.root, clock, overlay.hold, () => { scrubUntil = performance.now() + 2500; });
 label.setLocation(place);
+const browserChrome = createBrowserChrome();
 
 function setPlace(loc: Location) {
   Object.assign(place, loc);
@@ -122,7 +132,8 @@ startLoop({
       accumulation.step((dt * sim.speed) / 3600, w);
     }
     frameWeather.rain = w.rain; frameWeather.snow = w.snow; frameWeather.temperature = w.temperature;
-    frameWeather.fog = w.fog; frameWeather.cloudCover = w.cloudCover;
+    frameWeather.fog = Math.min(1, w.fog + mistAmount(w.humidity, w.windSpeed, w.cloudCover, sun.elevation));
+    frameWeather.cloudCover = w.cloudCover;
     frameWeather.snowCover = accumulation.snow; frameWeather.wet = accumulation.wet;
     for (const l of layers) l.update?.(dt, t, wind);
   },
@@ -136,12 +147,14 @@ startLoop({
     const w = smoothed.value;
     computeLight({
       sunElevation: sun.elevation, sunAzimuth: sun.azimuth,
-      cloudCover: w.cloudCover, fog: w.fog,
+      cloudCover: w.cloudCover, fog: frameWeather.fog,
       moonElevation: moon.elevation, moonFraction: moon.fraction,
       precip: 1 - Math.exp(-(w.rain + w.snow * 0.7) / 3),
       wet: accumulation.wet, snowCover: Math.min(1, accumulation.snow),
     }, light);
-    renderer.render(resolve(palette, light), light, t, alpha, season, frameWeather);
+    const colours = resolve(palette, light);
+    renderer.render(colours, light, t, alpha, season, frameWeather);
+    browserChrome.update(colours.version, colours.sky, colours.hex('grassFar'), colours.atmos('farTreeline', 0.7));
     overlay.setInk(light.brightness * (1 - light.skyDark * 0.6));
     label.setTime(now, clock.offsetMs < 60e3);
   },

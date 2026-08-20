@@ -234,20 +234,33 @@ function pine(spec: TreeSpec, rng: Rng): Tree {
       const ang = ba + side * (Math.PI / 2 - 0.25 + rng.range(-0.15, 0.2));
       const b = limb(bx, by, len, ang, H * 0.010 * taper + 1, 0.7, -side * rng.range(0.15, 0.35), rng, 5);
       branches.push(b.poly);
-      // Flat needle pads: wide, thin, ragged underneath; bigger toward the tip.
+      // Needle masses: each branch carries a few flat, layered pads, and every pad is a cluster
+      // of ragged tufts rather than one smooth shape, so the crown reads as foliage, not discs.
       const pads = rng.int(2, 4);
       for (let k = 0; k < pads; k++) {
         const u = (k + rng.range(0.4, 1)) / pads;
         const [px, py] = b.along(Math.min(1, u));
-        const w = len * (0.26 + 0.22 * u) * rng.range(0.8, 1.15);
+        const w = len * (0.24 + 0.22 * u) * rng.range(0.8, 1.15);
         const x = px + side * w * 0.1, y = py - w * 0.12;
-        foliage.push({ x, y, verts: blob(w, w * rng.range(0.28, 0.4), rng, 16, 0.38), tone: 0.15 - (i / tiers) * 0.1 - u * 0.1 + rng.gauss() * 0.3, sway: 0.2 + 0.4 * u, dx: side * (0.4 + u * 0.6) });
+        const baseTone = 0.15 - (i / tiers) * 0.1 - u * 0.1;
+        // the shaded body of the pad, a little lower and wider
+        foliage.push({ x, y: y + w * 0.06, verts: blob(w * 1.05, w * rng.range(0.22, 0.3), rng, 22, 0.55), tone: baseTone - 0.35 + rng.gauss() * 0.2, sway: 0.2 + 0.4 * u, dx: side * (0.4 + u * 0.6) });
+        // lit tufts scattered along the top of the pad, denser toward its tip
+        const tufts = rng.int(3, 5);
+        for (let q = 0; q < tufts; q++) {
+          const v = Math.pow(rng.next(), 0.7);
+          const tx = x + (v - 0.45) * w * 1.5 * side * (rng.chance(0.8) ? 1 : -0.6);
+          const ty = y - w * rng.range(0.02, 0.16);
+          const r = w * rng.range(0.22, 0.4);
+          foliage.push({ x: tx, y: ty, verts: blob(r, r * rng.range(0.45, 0.65), rng, 14, 0.5), tone: baseTone + 0.25 - v * 0.1 + rng.gauss() * 0.3, sway: 0.25 + 0.45 * u, dx: side * (0.4 + u * 0.6) });
+        }
         crownX += x; crownY += y; count++;
       }
     }
   }
   const top = trunk.tip;
-  foliage.push({ x: top[0], y: top[1] + H * 0.015, verts: blob(H * 0.045, H * 0.03, rng, 12, 0.35), tone: 0.35, sway: 0.8, dx: 0 });
+  foliage.push({ x: top[0], y: top[1] + H * 0.02, verts: blob(H * 0.05, H * 0.03, rng, 14, 0.5), tone: -0.1, sway: 0.8, dx: 0 });
+  foliage.push({ x: top[0] + rng.gauss() * H * 0.01, y: top[1] + H * 0.005, verts: blob(H * 0.032, H * 0.022, rng, 12, 0.5), tone: 0.4, sway: 0.85, dx: 0 });
   foliage.sort((a, b) => a.tone - b.tone);
   return { kind: 'pine', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, marks: [], crownX: crownX / Math.max(1, count), crownY: crownY / Math.max(1, count), trunkS: new Float32Array(0), branchS: [], blobS: new Float32Array(0), trunkLen: H * 0.94 };
 }
