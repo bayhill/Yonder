@@ -29,14 +29,15 @@ export function createGrassBand(spec: BandSpec, role: Role, depth: number, rng: 
     draw(ctx, f: Frame) {
       const ramp = f.colours.ramp(role);
       const a = f.alpha;
+      const g = f.season.grass;
       for (let k = 0; k < RAMP; k++) {
         ctx.fillStyle = depth > 0 ? f.colours.atmos(role, depth + (k - 2) * -0.05) : ramp[k];
         ctx.beginPath();
         for (let i = 0; i < band.count; i++) {
           if (band.tone[i] !== k) continue;
-          const tx = band.prevX[i] + (band.tipX[i] - band.prevX[i]) * a;
-          const ty = band.prevY[i] + (band.tipY[i] - band.prevY[i]) * a;
-          bladePath(ctx, band.x[i], band.y[i], band.w[i], tx, ty);
+          const tx = (band.prevX[i] + (band.tipX[i] - band.prevX[i]) * a) * g;
+          const ty = (band.prevY[i] + (band.tipY[i] - band.prevY[i]) * a) * g;
+          bladePath(ctx, band.x[i], band.y[i], band.w[i] * (0.8 + 0.2 * g), tx, ty);
         }
         ctx.fill();
       }

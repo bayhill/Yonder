@@ -1,7 +1,7 @@
 import { buildScene } from './scene/scene';
 import { createRenderer } from './render/renderer';
 import { createResolver } from './colour/resolve';
-import { seasonPalette, dayOfYear } from './colour/season';
+import { seasonPalette, seasonParams, dayOfYear } from './colour/season';
 import { computeLight, blankLight } from './colour/light';
 import { startLoop } from './core/loop';
 import { SEED, DEFAULT_LOCATION } from './config';
@@ -36,6 +36,7 @@ installGrain(createRng(SEED));
 
 const light = blankLight();
 const palette = seasonPalette(dayOfYear(clock.now()));
+const season = seasonParams(dayOfYear(clock.now()));
 let t = 0;
 
 startLoop({
@@ -48,13 +49,15 @@ startLoop({
     const now = clock.now();
     sunPosition(now, location_.lat, location_.lon, sun);
     moonState(now, location_.lat, location_.lon, moon);
-    seasonPalette(dayOfYear(now), palette);
+    const doy = dayOfYear(now);
+    seasonPalette(doy, palette);
+    seasonParams(doy, season);
     computeLight({
       sunElevation: sun.elevation, sunAzimuth: sun.azimuth,
       cloudCover: weather.cloudCover, fog: weather.fog,
       moonElevation: moon.elevation, moonFraction: moon.fraction,
     }, light);
-    renderer.render(resolve(palette, light), light, t, alpha);
+    renderer.render(resolve(palette, light), light, t, alpha, season);
   },
 });
 
@@ -62,5 +65,6 @@ if (import.meta.env.DEV) {
   import('./dev/devPanel').then((m) => m.installDevPanel(canvas, { clock, weather, onWeather: applyWeather, state: () => ({ sun, moon, light }) }));
   (window as unknown as { __yonder: unknown }).__yonder = {
     layers, renderer, clock, wind, weather, applyWeather, profile: () => renderer.profile(resolve(palette, light), light, t),
+    season,
   };
 }

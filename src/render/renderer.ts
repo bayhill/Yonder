@@ -2,13 +2,14 @@ import type { Layer, Frame } from '../scene/layer';
 import { fitViewport, type Viewport } from '../scene/composition';
 import type { Resolved } from '../colour/resolve';
 import type { Light } from '../colour/light';
+import type { SeasonParams } from '../colour/season';
 
 export interface Renderer {
   readonly canvas: HTMLCanvasElement;
   readonly vp: Viewport;
   readonly dpr: number;
   resize(): void;
-  render(colours: Resolved, light: Light, t: number, alpha: number): void;
+  render(colours: Resolved, light: Light, t: number, alpha: number, season: SeasonParams): void;
   /** Dev: ms spent per layer in the last profiled frame. */
   profile(colours: Resolved, light: Light, t: number): Record<string, number>;
 }
@@ -33,7 +34,7 @@ export function createRenderer(canvas: HTMLCanvasElement, layers: Layer[], maxDp
   }
   const vp = fitViewport(1, 1);
   let dpr = 1;
-  const frame: Frame = { colours: null as unknown as Resolved, light: null as unknown as Light, vp, t: 0, alpha: 1, dpr: 1 };
+  const frame: Frame = { colours: null as unknown as Resolved, light: null as unknown as Light, vp, t: 0, alpha: 1, season: { leaf: 1, grass: 1 }, dpr: 1 };
 
   function resize() {
     const fixed = new URLSearchParams(location.search).get('vp')?.split('x').map(Number);
@@ -48,8 +49,8 @@ export function createRenderer(canvas: HTMLCanvasElement, layers: Layer[], maxDp
     for (const l of layers) l.resize?.(vp, dpr);
   }
 
-  function render(colours: Resolved, light: Light, t: number, alpha: number) {
-    frame.colours = colours; frame.light = light; frame.t = t; frame.alpha = alpha;
+  function render(colours: Resolved, light: Light, t: number, alpha: number, season: SeasonParams) {
+    frame.colours = colours; frame.light = light; frame.t = t; frame.alpha = alpha; frame.season = season;
     for (const p of passes) {
       if (p.kind === 'static') {
         if (p.version !== colours.version) {

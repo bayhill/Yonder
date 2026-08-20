@@ -2,6 +2,7 @@ import type { Resolved } from '../colour/resolve';
 import type { Light } from '../colour/light';
 import type { Viewport } from './composition';
 import type { WindField } from '../wind/field';
+import type { SeasonParams } from '../colour/season';
 
 /** Everything a layer needs to draw one frame. Built once per frame, never per layer. */
 export interface Frame {
@@ -12,6 +13,7 @@ export interface Frame {
   t: number;
   /** Interpolation factor between the previous and current sim step, 0..1. */
   alpha: number;
+  season: SeasonParams;
   dpr: number;
 }
 

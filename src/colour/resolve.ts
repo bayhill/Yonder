@@ -56,10 +56,11 @@ export function createResolver() {
     // Warmth pulls toward amber or toward night blue — in OKLab, so nothing detours through magenta.
     if (L.warmth > 0) {
       WARM.l = out.l; WARM.c = 0.09 + out.c * 0.5;
-      mix(out, WARM, L.warmth * 0.28, out);
+      // Low-chroma blues (far hills, haze) resist the warm cast, so a sunset never greys them out.
+      mix(out, WARM, L.warmth * 0.28 * (0.4 + 0.6 * clamp01(out.c * 12)), out);
     } else if (L.warmth < 0) {
-      COOL.l = out.l; COOL.c = 0.035;
-      mix(out, COOL, -L.warmth * 0.5, out);
+      COOL.l = out.l; COOL.c = 0.03;
+      mix(out, COOL, -L.warmth * 0.68, out);
     }
     return out;
   }

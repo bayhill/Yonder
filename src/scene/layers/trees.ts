@@ -99,6 +99,10 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
         // Foliage, grouped by ramp index to minimise fillStyle changes.
         const role = t.kind === 'birch' ? 'foliageBirch' : 'foliage';
         const ramp = c.ramp(role);
+        // Birch leaf masses shrink to twig clusters out of season; pines keep their needles.
+        const leaf = t.kind === 'birch' ? f.season.leaf : 1;
+        const sc = 0.38 + 0.62 * leaf;
+        if (t.kind === 'birch') ctx.globalAlpha = 0.55 + 0.45 * leaf;
         for (let k = 0; k < RAMP; k++) {
           let any = false;
           ctx.beginPath();
@@ -113,14 +117,15 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
             const sB = t.blobS[bi];
             const ox = tip * sB * sB + (cano + shv) * b.sway;
             const oy = Math.abs(ox) * 0.10;
-            ctx.moveTo(b.x + ox + b.verts[0], b.y + oy + b.verts[1]);
-            for (let i = 2; i < b.verts.length; i += 2) ctx.lineTo(b.x + ox + b.verts[i], b.y + oy + b.verts[i + 1]);
+            ctx.moveTo(b.x + ox + b.verts[0] * sc, b.y + oy + b.verts[1] * sc);
+            for (let i = 2; i < b.verts.length; i += 2) ctx.lineTo(b.x + ox + b.verts[i] * sc, b.y + oy + b.verts[i + 1] * sc);
             ctx.closePath();
           }
           if (!any) continue;
           ctx.fillStyle = far ? c.atmos(role, t.depth + (k - 2) * -0.04) : ramp[k];
           ctx.fill();
         }
+        ctx.globalAlpha = 1;
       }
     },
   };
