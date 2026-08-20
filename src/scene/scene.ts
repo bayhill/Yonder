@@ -1,6 +1,9 @@
 import { createRng } from '../core/random';
 import type { Layer } from './layer';
 import { skyLayer } from './layers/sky';
+import { createStars } from './layers/stars';
+import { createMoon } from './layers/moon';
+import type { MoonState } from '../astronomy/moon';
 import { createFarHills } from './layers/farHills';
 import { createFarTreeline } from './layers/farTreeline';
 import { createGround } from './layers/ground';
@@ -9,7 +12,7 @@ import { createGrassBand } from './layers/grass';
 import { groundTop, LAYOUT, WORLD } from './composition';
 
 /** Assembles the depth-ordered layer stack from one seed. */
-export function buildScene(seed: string): Layer[] {
+export function buildScene(seed: string, moon: MoonState): Layer[] {
   const rng = createRng(seed);
   const gt = groundTop;
 
@@ -25,25 +28,27 @@ export function buildScene(seed: string): Layer[] {
   ], rng.fork('nearTrees'));
 
   const backGrass = createGrassBand({
-    count: 520, x0: -20, x1: WORLD.w + 20,
+    count: 760, x0: -20, x1: WORLD.w + 20,
     y0: (x) => gt(x) + 4, y1: (x) => gt(x) + 70,
-    hMin: 12, hMax: 26, wMin: 1.6, wMax: 3, perspective: 0.6, leanBias: 0.10, clump: 0.5,
+    hMin: 12, hMax: 26, wMin: 2, wMax: 3.6, perspective: 0.6, leanBias: 0.10, clump: 0.5,
   }, 'grassFar', 0.3, rng.fork('backGrass'));
 
   const midGrass = createGrassBand({
-    count: 560, x0: -30, x1: WORLD.w + 30,
+    count: 900, x0: -30, x1: WORLD.w + 30,
     y0: (x) => gt(x) + 70, y1: () => 790,
-    hMin: 28, hMax: 62, wMin: 2.2, wMax: 4.2, perspective: 1.0, leanBias: 0.12, clump: 0.55,
+    hMin: 28, hMax: 62, wMin: 2.8, wMax: 5.2, perspective: 1.0, leanBias: 0.12, clump: 0.55,
   }, 'grassNear', 0.12, rng.fork('midGrass'));
 
   const frontGrass = createGrassBand({
-    count: 300, x0: -60, x1: WORLD.w + 60,
+    count: 480, x0: -60, x1: WORLD.w + 60,
     y0: () => 795, y1: () => WORLD.h + 30,
-    hMin: 70, hMax: 150, wMin: 3.5, wMax: 6.5, perspective: 0.9, leanBias: 0.14, clump: 0.6,
+    hMin: 70, hMax: 150, wMin: 4.5, wMax: 8, perspective: 0.9, leanBias: 0.14, clump: 0.6,
   }, 'grassNear', 0, rng.fork('frontGrass'));
 
   return [
     skyLayer,
+    createStars(rng),
+    createMoon(moon),
     createFarHills(rng),
     createFarTreeline(rng),
     createGround(rng),

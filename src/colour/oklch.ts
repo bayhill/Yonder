@@ -1,18 +1,21 @@
 import { formatHex } from 'culori';
 import type { Oklch } from './palettes';
 
-/** Hue-aware OKLCH interpolation (shortest arc). Allocation-free when `out` is supplied. */
+/**
+ * Interpolation in OKLab (a/b rather than hue): passes through grey instead of around the hue
+ * wheel, which is how dimming, haze and night actually behave. Allocation-free with `out`.
+ */
 export function mix(a: Oklch, b: Oklch, t: number, out: Oklch = { l: 0, c: 0, h: 0 }): Oklch {
-  let dh = ((b.h - a.h + 540) % 360) - 180;
-  if (dh < -180) dh += 360;
-  // Near-achromatic colours have meaningless hue; weight the hue toward the chromatic one.
-  const wa = a.c, wb = b.c, ws = wa + wb;
-  const ht = ws > 1e-6 ? (wb * t) / ((1 - t) * wa + t * wb || 1) : t;
+  const ra = a.h * D2R, rb = b.h * D2R;
+  const aa = a.c * Math.cos(ra), ab = a.c * Math.sin(ra);
+  const ba = b.c * Math.cos(rb), bb = b.c * Math.sin(rb);
+  const la = aa + (ba - aa) * t, lb = ab + (bb - ab) * t;
   out.l = a.l + (b.l - a.l) * t;
-  out.c = a.c + (b.c - a.c) * t;
-  out.h = (a.h + dh * ht + 360) % 360;
+  out.c = Math.hypot(la, lb);
+  out.h = out.c < 1e-6 ? (t < 0.5 ? a.h : b.h) : ((Math.atan2(lb, la) / D2R) + 360) % 360;
   return out;
 }
+const D2R = Math.PI / 180;
 
 export function toHex(col: Oklch): string {
   return formatHex({ mode: 'oklch', l: col.l, c: col.c, h: col.h }) ?? '#000000';

@@ -18,6 +18,8 @@ export interface Tree {
   trunk: Float32Array;      // closed polygon, absolute coords
   branches: Float32Array[]; // closed polygons
   foliage: Blob[];          // drawn back-to-front as generated
+  /** Dark bark marks (birch lenticels and the rough base), absolute polygons. */
+  marks: Float32Array[];
   /** Horizontal offset of the canopy centre from the trunk base — used for tone. */
   crownX: number; crownY: number;
 }
@@ -148,7 +150,48 @@ function birch(spec: TreeSpec, rng: Rng): Tree {
     }
   }
   foliage.sort((a, b) => a.tone - b.tone);
-  return { kind: 'birch', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, crownX, crownY };
+
+  // Bark: horizontal dark lenticel patches, denser and wider low on the trunk, plus a rough dark base.
+  const marks: Float32Array[] = [];
+  const nMarks = rng.int(26, 38);
+  for (let i = 0; i < nMarks; i++) {
+    const t = Math.pow(rng.next(), 1.4) * 0.78 + 0.03;
+    const [mx, my, ma] = trunk.along(t);
+    const w = (H * 0.036 * (1 - t * 0.7)) * 0.5; // half trunk width here
+    const side = rng.range(-1, 1);
+    const len = w * rng.range(0.8, 2.4);
+    const thick = H * rng.range(0.005, 0.014) * (1 - t * 0.4);
+    const nx = Math.cos(ma), ny = Math.sin(ma);   // across the trunk
+    const ux = -ny, uy = nx;                      // along the trunk (up)
+    const c0 = side * w - len * 0.5, c1 = side * w + len * 0.5;
+    const a0 = Math.max(-w, c0), a1 = Math.min(w, c1);
+    if (a1 - a0 < w * 0.3) continue;
+    const j0 = rng.range(-0.3, 0.3) * thick, j1 = rng.range(-0.3, 0.3) * thick;
+    marks.push(new Float32Array([
+      mx + nx * a0 + ux * (thick + j0), my + ny * a0 + uy * (thick + j0),
+      mx + nx * a1 + ux * (thick + j1), my + ny * a1 + uy * (thick + j1),
+      mx + nx * a1 - ux * (thick - j0), my + ny * a1 - uy * (thick - j0),
+      mx + nx * a0 - ux * (thick - j1), my + ny * a0 - uy * (thick - j1),
+    ]));
+  }
+  // Rough base: a ragged dark band over the lowest part of the trunk.
+  {
+    const seg = 7, w = H * 0.036 * 0.5;
+    const pts: number[] = [];
+    for (let k = 0; k <= seg; k++) {
+      const [mx, my, ma] = trunk.along(0.002 + (k / seg) * 0.09);
+      const nx = Math.cos(ma), ny = Math.sin(ma);
+      pts.push(mx - nx * w * 1.05, my - ny * w * 1.05);
+    }
+    for (let k = seg; k >= 0; k--) {
+      const [mx, my, ma] = trunk.along(0.002 + (k / seg) * 0.09);
+      const nx = Math.cos(ma), ny = Math.sin(ma);
+      const ragged = 1 - (k / seg) * rng.range(0.6, 1.0) ;
+      pts.push(mx + nx * w * (1.05 * ragged - 1.0 * (1 - ragged)), my + ny * w * (1.05 * ragged - 1.0 * (1 - ragged)));
+    }
+    marks.push(new Float32Array(pts));
+  }
+  return { kind: 'birch', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, marks, crownX, crownY };
 }
 
 function pine(spec: TreeSpec, rng: Rng): Tree {
@@ -187,5 +230,5 @@ function pine(spec: TreeSpec, rng: Rng): Tree {
   const top = trunk.tip;
   foliage.push({ x: top[0], y: top[1] + H * 0.015, verts: blob(H * 0.045, H * 0.03, rng, 12, 0.35), tone: 0.35, sway: 0.8, dx: 0 });
   foliage.sort((a, b) => a.tone - b.tone);
-  return { kind: 'pine', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, crownX: crownX / Math.max(1, count), crownY: crownY / Math.max(1, count) };
+  return { kind: 'pine', x: spec.x, y: spec.y, height: H, depth: spec.depth, trunk: trunk.poly, branches, foliage, marks: [], crownX: crownX / Math.max(1, count), crownY: crownY / Math.max(1, count) };
 }
