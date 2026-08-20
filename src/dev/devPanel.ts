@@ -18,13 +18,17 @@ export interface DevHooks {
   /** Simulated seconds per real second (time-lapse for accumulation and the sun). */
   sim: { speed: number };
   accumulation: Accumulation;
+  /** 'live' = Open-Meteo drives the weather; 'manual' = the sliders do. */
+  source: { mode: 'live' | 'manual' };
+  store: () => { status: string; samples: number };
+  onLive: () => void;
   /** Called after any weather change so dependents (wind field…) can reconfigure. */
   onWeather: () => void;
   state: () => { sun: SunState; moon: MoonState; light: Light };
 }
 
 export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
-  const { clock, weather, sim, accumulation } = hooks;
+  const { clock, weather, sim, accumulation, source } = hooks;
   const root = document.createElement('div');
   root.style.cssText = [
     'position:fixed;left:10px;bottom:10px;z-index:9;width:250px;padding:10px 12px;border-radius:6px',
@@ -82,6 +86,19 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
   nowBtn.addEventListener('click', () => { clock.reset(); sim.speed = 1; sliders.forEach((r) => r()); syncUrl(); });
   root.appendChild(nowBtn);
 
+  // --- source ---
+  section('weather');
+  const srcRow = document.createElement('div');
+  srcRow.style.cssText = 'display:flex;gap:6px;align-items:center;margin:2px 0 4px';
+  const liveBtn = document.createElement('button');
+  liveBtn.textContent = 'live';
+  liveBtn.style.cssText = nowBtn.style.cssText;
+  liveBtn.addEventListener('click', () => { hooks.onLive(); sliders.forEach((r) => r()); });
+  const srcInfo = document.createElement('span');
+  srcInfo.style.cssText = 'opacity:.7';
+  srcRow.append(liveBtn, srcInfo);
+  root.appendChild(srcRow);
+
   // --- sky ---
   section('sky');
   slider('cloud', 0, 1, 0.01, () => weather.cloudCover, (v) => { weather.cloudCover = v; hooks.onWeather(); });
@@ -124,6 +141,9 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     const { sun, moon, light } = hooks.state();
     const d = clock.now();
     readout.textContent = `${fps} fps   ${d.toLocaleString('sv-SE')}\nsun ${sun.elevation.toFixed(1)}° @${sun.azimuth.toFixed(0)}°   moon ${moon.elevation.toFixed(0)}° ${(moon.fraction * 100).toFixed(0)}%\nbright ${light.brightness.toFixed(2)}  warm ${light.warmth.toFixed(2)}  dark ${light.skyDark.toFixed(2)}\nsnow cover ${(accumulation.snow * 100).toFixed(0)}%   wet ${(accumulation.wet * 100).toFixed(0)}%`;
+    const st = hooks.store();
+    srcInfo.textContent = source.mode === 'live' ? `live · ${st.status} · ${st.samples} h` : `manual (sliders) · data ${st.status}`;
+    liveBtn.style.opacity = source.mode === 'live' ? '.45' : '1';
     if (frames % 15 === 0) sliders.slice(0, 2).forEach((r) => r()); // time sliders follow the clock
     requestAnimationFrame(tick);
   };
