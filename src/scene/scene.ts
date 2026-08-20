@@ -1,0 +1,56 @@
+import { createRng } from '../core/random';
+import type { Layer } from './layer';
+import { skyLayer } from './layers/sky';
+import { createFarHills } from './layers/farHills';
+import { createFarTreeline } from './layers/farTreeline';
+import { createGround } from './layers/ground';
+import { createTrees } from './layers/trees';
+import { createGrassBand } from './layers/grass';
+import { groundTop, LAYOUT, WORLD } from './composition';
+
+/** Assembles the depth-ordered layer stack from one seed. */
+export function buildScene(seed: string): Layer[] {
+  const rng = createRng(seed);
+  const gt = groundTop;
+
+  const farTrees = createTrees([
+    { kind: 'pine', x: 340, y: gt(340) + 4, height: 120, depth: 0.58, lean: 0.2 },
+    { kind: 'birch', x: 1345, y: gt(1345) + 5, height: 140, depth: 0.46, lean: -0.3 },
+    { kind: 'pine', x: 1290, y: gt(1290) + 8, height: 190, depth: 0.42 },
+  ], rng.fork('farTrees'));
+
+  const nearTrees = createTrees([
+    { kind: 'pine', x: 1165, y: gt(1165) + 14, height: 300, depth: 0.24, lean: -0.15 },
+    { kind: 'birch', x: LAYOUT.mainTreeX, y: gt(LAYOUT.mainTreeX) + 18, height: 360, depth: 0.12, lean: 0.35 },
+  ], rng.fork('nearTrees'));
+
+  const backGrass = createGrassBand({
+    count: 520, x0: -20, x1: WORLD.w + 20,
+    y0: (x) => gt(x) + 4, y1: (x) => gt(x) + 70,
+    hMin: 12, hMax: 26, wMin: 1.6, wMax: 3, perspective: 0.6, leanBias: 0.10, clump: 0.5,
+  }, 'grassFar', 0.3, rng.fork('backGrass'));
+
+  const midGrass = createGrassBand({
+    count: 560, x0: -30, x1: WORLD.w + 30,
+    y0: (x) => gt(x) + 70, y1: () => 790,
+    hMin: 28, hMax: 62, wMin: 2.2, wMax: 4.2, perspective: 1.0, leanBias: 0.12, clump: 0.55,
+  }, 'grassNear', 0.12, rng.fork('midGrass'));
+
+  const frontGrass = createGrassBand({
+    count: 300, x0: -60, x1: WORLD.w + 60,
+    y0: () => 795, y1: () => WORLD.h + 30,
+    hMin: 70, hMax: 150, wMin: 3.5, wMax: 6.5, perspective: 0.9, leanBias: 0.14, clump: 0.6,
+  }, 'grassNear', 0, rng.fork('frontGrass'));
+
+  return [
+    skyLayer,
+    createFarHills(rng),
+    createFarTreeline(rng),
+    createGround(rng),
+    farTrees,
+    backGrass,
+    nearTrees,
+    midGrass,
+    frontGrass,
+  ];
+}
