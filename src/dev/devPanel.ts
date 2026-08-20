@@ -4,6 +4,7 @@ import type { SunState } from '../astronomy/sun';
 import type { MoonState } from '../astronomy/moon';
 import type { WeatherControls } from '../weather/controls';
 import { dayOfYear } from '../colour/season';
+import type { Accumulation } from '../weather/accumulation';
 
 /**
  * Development-only control panel (tree-shaken out of production).
@@ -14,13 +15,16 @@ import { dayOfYear } from '../colour/season';
 export interface DevHooks {
   clock: Clock;
   weather: WeatherControls;
+  /** Simulated seconds per real second (time-lapse for accumulation and the sun). */
+  sim: { speed: number };
+  accumulation: Accumulation;
   /** Called after any weather change so dependents (wind field…) can reconfigure. */
   onWeather: () => void;
   state: () => { sun: SunState; moon: MoonState; light: Light };
 }
 
 export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
-  const { clock, weather } = hooks;
+  const { clock, weather, sim, accumulation } = hooks;
   const root = document.createElement('div');
   root.style.cssText = [
     'position:fixed;left:10px;bottom:10px;z-index:9;width:250px;padding:10px 12px;border-radius:6px',
@@ -71,10 +75,11 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     const d = new Date(); d.setMonth(0, 1); d.setDate(v);
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   });
+  slider('speed', 0, 3.56, 0.02, () => Math.log10(sim.speed), (v) => { sim.speed = Math.round(Math.pow(10, v)); }, (v) => `×${Math.round(Math.pow(10, v))}`);
   const nowBtn = document.createElement('button');
   nowBtn.textContent = 'now';
   nowBtn.style.cssText = 'margin:2px 0 0;padding:1px 8px;font:inherit;color:inherit;background:rgba(255,255,255,.1);border:0;border-radius:3px;cursor:pointer';
-  nowBtn.addEventListener('click', () => { clock.reset(); syncUrl(); });
+  nowBtn.addEventListener('click', () => { clock.reset(); sim.speed = 1; sliders.forEach((r) => r()); syncUrl(); });
   root.appendChild(nowBtn);
 
   // --- sky ---
@@ -118,7 +123,7 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     if (now - last >= 1000) { fps = frames; frames = 0; last = now; }
     const { sun, moon, light } = hooks.state();
     const d = clock.now();
-    readout.textContent = `${fps} fps   ${d.toLocaleString('sv-SE')}\nsun ${sun.elevation.toFixed(1)}° @${sun.azimuth.toFixed(0)}°   moon ${moon.elevation.toFixed(0)}° ${(moon.fraction * 100).toFixed(0)}%\nbright ${light.brightness.toFixed(2)}  warm ${light.warmth.toFixed(2)}  dark ${light.skyDark.toFixed(2)}`;
+    readout.textContent = `${fps} fps   ${d.toLocaleString('sv-SE')}\nsun ${sun.elevation.toFixed(1)}° @${sun.azimuth.toFixed(0)}°   moon ${moon.elevation.toFixed(0)}° ${(moon.fraction * 100).toFixed(0)}%\nbright ${light.brightness.toFixed(2)}  warm ${light.warmth.toFixed(2)}  dark ${light.skyDark.toFixed(2)}\nsnow cover ${(accumulation.snow * 100).toFixed(0)}%   wet ${(accumulation.wet * 100).toFixed(0)}%`;
     if (frames % 15 === 0) sliders.slice(0, 2).forEach((r) => r()); // time sliders follow the clock
     requestAnimationFrame(tick);
   };

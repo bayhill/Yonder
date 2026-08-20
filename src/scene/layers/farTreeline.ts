@@ -4,7 +4,7 @@ import type { Rng } from '../../core/random';
 import { createNoise2D } from 'simplex-noise';
 
 /** A low conifer treeline across the far side of the meadow: two soft rows, clumped, with gaps. */
-export function createFarTreeline(rng: Rng): Layer {
+export function createFarTreeline(rng: Rng): Layer & { drawPath: (ctx: CanvasRenderingContext2D, yOffset: (x: number) => number) => void } {
   const r = rng.fork('treeline');
   const noise = createNoise2D(r.next);
   const rows = [buildRow(0.80, 9, 1.0), buildRow(0.66, 0, 1.25)];
@@ -35,8 +35,17 @@ export function createFarTreeline(rng: Rng): Layer {
     return { depth, arr: new Float32Array(pts) };
   }
 
+  const drawPath = (ctx: CanvasRenderingContext2D, yOffset: (x: number) => number) => {
+    const row = rows[1];
+    ctx.beginPath();
+    ctx.moveTo(row.arr[0], row.arr[1]);
+    for (let i = 2; i < row.arr.length; i += 2) ctx.lineTo(row.arr[i], row.arr[i + 1] + yOffset(row.arr[i]));
+    ctx.closePath();
+    ctx.fill();
+  };
   return {
     name: 'farTreeline',
+    drawPath,
     static: true,
     draw(ctx, f: Frame) {
       for (const row of rows) {

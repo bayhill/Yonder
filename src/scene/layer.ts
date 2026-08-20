@@ -4,6 +4,12 @@ import type { Viewport } from './composition';
 import type { WindField } from '../wind/field';
 import type { SeasonParams } from '../colour/season';
 
+/** Smoothed weather plus accumulated state, as layers see it. */
+export interface FrameWeather {
+  rain: number; snow: number; temperature: number; fog: number; cloudCover: number;
+  snowCover: number; wet: number;
+}
+
 /** Everything a layer needs to draw one frame. Built once per frame, never per layer. */
 export interface Frame {
   colours: Resolved;
@@ -14,6 +20,7 @@ export interface Frame {
   /** Interpolation factor between the previous and current sim step, 0..1. */
   alpha: number;
   season: SeasonParams;
+  weather: FrameWeather;
   dpr: number;
 }
 

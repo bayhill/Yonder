@@ -4,6 +4,9 @@ import { skyLayer } from './layers/sky';
 import { createStars } from './layers/stars';
 import { createMoon } from './layers/moon';
 import { createClouds } from './layers/clouds';
+import { createRain, createSnow } from './layers/precipitation';
+import { fogLayer, createShimmer } from './layers/atmosphere';
+import { createSnowSheet } from './layers/snowCover';
 import type { MoonState } from '../astronomy/moon';
 import { createFarHills } from './layers/farHills';
 import { createFarTreeline } from './layers/farTreeline';
@@ -46,18 +49,26 @@ export function buildScene(seed: string, moon: MoonState, cloudCover: () => numb
     hMin: 70, hMax: 150, wMin: 4.5, wMax: 8, perspective: 0.9, leanBias: 0.07, clump: 0.6,
   }, 'grassNear', 0, rng.fork('frontGrass'), 0.85);
 
+  const treeline = createFarTreeline(rng);
   return [
     skyLayer,
     createStars(rng),
     createMoon(moon),
     createClouds(rng, cloudCover),
     createFarHills(rng),
-    createFarTreeline(rng),
+    treeline,
+    createShimmer(treeline),
     createGround(rng),
+    createSnowSheet(rng, 'far'),
     farTrees,
+    createSnow(rng, 'far'),
+    fogLayer,
     backGrass,
     nearTrees,
     midGrass,
+    createSnowSheet(rng, 'near'),
     frontGrass,
+    createSnow(rng, 'near'),
+    createRain(rng),
   ];
 }

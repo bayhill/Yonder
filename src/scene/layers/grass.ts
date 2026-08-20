@@ -29,17 +29,36 @@ export function createGrassBand(spec: BandSpec, role: Role, depth: number, rng: 
     draw(ctx, f: Frame) {
       const ramp = f.colours.ramp(role);
       const a = f.alpha;
-      const g = f.season.grass;
+      const cover = f.weather.snowCover;
+      // Snow buries the meadow: blades shorten as the blanket rises, and bend a little under the load.
+      const g = f.season.grass * (1 - (depth > 0.2 ? 0.8 : 0.55) * Math.min(1, cover));
+      const sag = 1 + 0.35 * Math.min(1, cover);
       for (let k = 0; k < RAMP; k++) {
         ctx.fillStyle = depth > 0 ? f.colours.atmos(role, depth + (k - 2) * -0.05) : ramp[k];
         ctx.beginPath();
         for (let i = 0; i < band.count; i++) {
           if (band.tone[i] !== k) continue;
-          const tx = (band.prevX[i] + (band.tipX[i] - band.prevX[i]) * a) * g;
+          const tx = (band.prevX[i] + (band.tipX[i] - band.prevX[i]) * a) * g * sag;
           const ty = (band.prevY[i] + (band.tipY[i] - band.prevY[i]) * a) * g;
           bladePath(ctx, band.x[i], band.y[i], band.w[i] * (0.8 + 0.2 * g), tx, ty);
         }
         ctx.fill();
+      }
+      // Snow caps on the tips of the nearer blades.
+      if (cover > 0.12 && depth <= 0.2) {
+        ctx.strokeStyle = f.colours.ramp('snow')[2];
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = Math.min(1, (cover - 0.12) * 2.2);
+        ctx.beginPath();
+        for (let i = 0; i < band.count; i += 2) {
+          const tx = (band.prevX[i] + (band.tipX[i] - band.prevX[i]) * a) * g * sag;
+          const ty = (band.prevY[i] + (band.tipY[i] - band.prevY[i]) * a) * g;
+          ctx.lineWidth = band.w[i] * 0.9;
+          ctx.moveTo(band.x[i] + tx * 0.78, band.y[i] + ty * 0.8);
+          ctx.lineTo(band.x[i] + tx, band.y[i] + ty);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
       }
     },
   };

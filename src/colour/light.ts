@@ -8,6 +8,11 @@ export interface LightInput {
   fog: number;           // 0..1 (visibility-derived)
   moonElevation: number; // degrees
   moonFraction: number;  // illuminated fraction 0..1
+  /** Precipitation intensity 0..1 (dims and flattens a little, adds haze). */
+  precip?: number;
+  /** Ground wetness 0..1 and snow cover 0..1 (from accumulation). */
+  wet?: number;
+  snowCover?: number;
 }
 
 /** Derived scene lighting. Every colour on screen is palette × this. */
@@ -38,12 +43,17 @@ export interface Light {
   sunAzimuth: number;
   /** Cloud cover 0..1, for sky flattening and cloud colours. */
   cloud: number;
+  wet: number;
+  snowCover: number;
 }
 
 export function computeLight(i: LightInput, out: Light = blankLight()): Light {
   const el = i.sunElevation;
   const cloud = clamp01(i.cloudCover);
   const clear = 1 - cloud;
+  const precip = clamp01(i.precip ?? 0);
+  const wet = clamp01(i.wet ?? 0);
+  const snowCover = clamp01(i.snowCover ?? 0);
 
   // Twilight bands: astronomical (-18..-12), nautical (-12..-6), civil (-6..0), then day.
   const astro = smoothstep(-18, -12, el);
@@ -62,16 +72,19 @@ export function computeLight(i: LightInput, out: Light = blankLight()): Light {
   out.brightness =
     (0.22 + 0.04 * astro + 0.09 * naut + 0.18 * civil + 0.22 * lowDay + 0.25 * day) * lerp(1, 0.76, cloud)
     + 0.05 * moonLight + 0.02 * sunHigh;
-  out.lift = night * 0.05 + moonLight * 0.03;
+  out.brightness *= 1 - precip * 0.1;
+  // Snow on the ground throws light back up: nights are paler, never darker, under snow.
+  out.lift = night * 0.05 + moonLight * 0.03 + snowCover * (0.03 + 0.05 * night);
 
   const golden = smoothstep(-5, 1, el) * (1 - smoothstep(5, 16, el));
   const dusk = smoothstep(-9, -3, el) * (1 - smoothstep(-2, 3, el)); // deeper pink/violet band
   out.warmth = (golden * 0.9 + dusk * 0.35) * lerp(1, 0.25, cloud) - night * 0.7 - cloud * 0.12;
-  out.saturation = lerp(0.5, 1.0, smoothstep(-8, 10, el)) * lerp(1, 0.72, cloud) + golden * 0.12;
+  out.saturation = (lerp(0.5, 1.0, smoothstep(-8, 10, el)) * lerp(1, 0.72, cloud) + golden * 0.12) * (1 - precip * 0.15);
 
   out.dirX = Math.sin((i.sunAzimuth - 180) * (Math.PI / 180));
-  out.contrast = smoothstep(-2, 6, el) * lerp(1, 0.12, cloud) * lerp(0.55, 1, 1 - sunHigh) + moonLight * 0.25;
-  out.haze = clamp01(0.22 + cloud * 0.2 + i.fog * 0.55 + night * 0.05);
+  out.contrast = (smoothstep(-2, 6, el) * lerp(1, 0.12, cloud) * lerp(0.55, 1, 1 - sunHigh) + moonLight * 0.25) * (1 - precip * 0.5);
+  // Rain and snow are felt first as distance: far layers soften before a single drop shows.
+  out.haze = clamp01(0.22 + cloud * 0.2 + i.fog * 0.55 + night * 0.05 + precip * 0.4);
 
   out.skyDark = 1 - smoothstep(-16, 4, el);
   out.twilightGlow = (smoothstep(-12, -4, el) * (1 - smoothstep(2, 10, el))) * lerp(1, 0.15, cloud);
@@ -83,10 +96,12 @@ export function computeLight(i: LightInput, out: Light = blankLight()): Light {
   out.sunElevation = el;
   out.sunAzimuth = i.sunAzimuth;
   out.cloud = cloud;
+  out.wet = wet;
+  out.snowCover = snowCover;
   return out;
 }
 
 export const blankLight = (): Light => ({
   brightness: 1, warmth: 0, saturation: 1, dirX: 0.5, contrast: 0.5, haze: 0.3, skyDark: 0, lift: 0,
-  twilightGlow: 0, sunGlow: 0, stars: 0, moon: 0, shadowLength: 2, sunElevation: 20, sunAzimuth: 200, cloud: 0,
+  twilightGlow: 0, sunGlow: 0, stars: 0, moon: 0, shadowLength: 2, sunElevation: 20, sunAzimuth: 200, cloud: 0, wet: 0, snowCover: 0,
 });

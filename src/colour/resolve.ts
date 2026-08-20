@@ -21,6 +21,8 @@ export interface Resolved {
   moon: { lit: string; dark: string };
   /** Cloud colours: sunlit tops and shaded undersides. */
   cloud: { lit: string; shade: string };
+  rain: string;
+  snowFlake: string;
   star: string;
   /** Increments whenever colours actually change; cached layers compare it. */
   readonly version: number;
@@ -47,7 +49,9 @@ export function createResolver() {
     moon,
     cloud,
     star: '#000',
-  } as Resolved & { star: string };
+    rain: '#000',
+    snowFlake: '#000',
+  } as Resolved & { star: string; rain: string; snowFlake: string };
 
   function applyLight(p: Oklch, L: Light, out: Oklch): Oklch {
     out.l = clamp01(p.l * L.brightness + L.lift);
@@ -75,12 +79,14 @@ export function createResolver() {
   }
 
   function resolve(palette: Palette, L: Light): Resolved {
-    const key = `${q(L.brightness)}|${q(L.lift)}|${q(L.cloud)}|${q(L.warmth)}|${q(L.saturation)}|${q(L.contrast)}|${q(L.haze)}|${q(L.skyDark)}|${q(L.twilightGlow)}|${q(L.sunGlow)}|${q(palette.foliage.l)}|${q(palette.foliage.h / 360)}|${q(palette.skyZenith.l)}`;
+    const key = `${q(L.brightness)}|${q(L.lift)}|${q(L.cloud)}|${q(L.wet)}|${q(L.warmth)}|${q(L.saturation)}|${q(L.contrast)}|${q(L.haze)}|${q(L.skyDark)}|${q(L.twilightGlow)}|${q(L.sunGlow)}|${q(palette.foliage.l)}|${q(palette.foliage.h / 360)}|${q(palette.skyZenith.l)}`;
     if (key === lastKey) return resolved;
     lastKey = key;
     version++;
 
     for (const r of ROLES) applyLight(palette[r], L, lit[r]);
+    // Wet ground and grass are darker and a touch richer.
+    for (const r of WETTABLE) { lit[r].l = clamp01(lit[r].l - 0.075 * L.wet); lit[r].c += 0.012 * L.wet; }
 
     const baseSpread = 0.04 + 0.06 * L.contrast; // lightness step per ramp index
     for (const r of ROLES) {
@@ -130,6 +136,9 @@ export function createResolver() {
     moon.lit = toHex(mix(MOON, skyH, 0.15, tmp));
     moon.dark = toHex(mix(skyZ, MOON, 0.06, tmp));
     resolved.star = toHex(mix(STAR, skyZ, 0.2, tmp));
+    resolved.rain = toHex(mix(lit.farAtmosphere, skyH, 0.5, tmp));
+    mix(lit.snow, skyH, 0.12, tmp); tmp.l = Math.max(tmp.l, lit.farAtmosphere.l + 0.04);
+    resolved.snowFlake = toHex(tmp);
     return resolved;
   }
 
@@ -150,4 +159,5 @@ const STAR: Oklch = { l: 0.92, c: 0.01, h: 90 };
 /** Some roles want a quieter ramp than others. */
 /** Degrees of hue shift per ramp step: lit side toward yellow, shade toward blue-green. */
 const HUE_SPREAD: Partial<Record<Role, number>> = { foliage: -9, foliageBirch: -10, grassNear: -6, grassFar: -5, farTreeline: -4 };
+const WETTABLE: Role[] = ['ground', 'grassNear', 'grassFar', 'trunk'];
 const SPREAD: Partial<Record<Role, number>> = { grassNear: 0.6, grassFar: 0.5, ground: 0.6, foliageBirch: 0.95, foliage: 0.9 };

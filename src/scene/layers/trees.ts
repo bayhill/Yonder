@@ -126,6 +126,36 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
           ctx.fill();
         }
         ctx.globalAlpha = 1;
+        // Snow caps: the upper edge of each pine pad carries a white rim that thickens with cover.
+        const cover = f.weather.snowCover;
+        if (t.kind === 'pine' && cover > 0.08) {
+          ctx.fillStyle = far ? c.atmos('snow', t.depth) : c.ramp('snow')[2];
+          ctx.globalAlpha = Math.min(1, (cover - 0.08) * 1.8);
+          const lift = 1.5 + 3 * Math.min(1, cover);
+          ctx.beginPath();
+          for (let bi = 0; bi < t.foliage.length; bi++) {
+            const b = t.foliage[bi];
+            const sB = t.blobS[bi];
+            const ox = tip * sB * sB + (cano + shv) * b.sway, oy = Math.abs(ox) * 0.10;
+            const v = b.verts;
+            // upper vertices (dy < 0) form the cap, closed along a slightly lower line
+            let started = false;
+            for (let i = 0; i < v.length; i += 2) {
+              if (v[i + 1] > -0.5) continue;
+              const px = b.x + ox + v[i], py = b.y + oy + v[i + 1] - lift;
+              if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+            }
+            if (started) {
+              for (let i = v.length - 2; i >= 0; i -= 2) {
+                if (v[i + 1] > -0.5) continue;
+                ctx.lineTo(b.x + ox + v[i], b.y + oy + v[i + 1] + lift * 0.6);
+              }
+              ctx.closePath();
+            }
+          }
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
       }
     },
   };
