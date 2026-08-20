@@ -20,7 +20,7 @@ interface Alt { scale: number; speed: number; soft: number; onset: number; opaci
 // Altitudes, back to front: high thin veils, mid cumulus, low heavy deck.
 const ALTS: Alt[] = [
   { scale: 0.9, speed: 0.35, soft: 0.34, onset: 0.0, opacity: 0.5, warp: 1.8, aspect: 0.5 },
-  { scale: 1.5, speed: 0.7, soft: 0.13, onset: 0.06, opacity: 1.0, warp: 1.0, aspect: 0.95 },
+  { scale: 1.8, speed: 0.7, soft: 0.10, onset: 0.06, opacity: 1.0, warp: 1.0, aspect: 1.15 },
   { scale: 2.6, speed: 1.1, soft: 0.16, onset: 0.45, opacity: 1.0, warp: 0.7, aspect: 0.7 },
 ];
 

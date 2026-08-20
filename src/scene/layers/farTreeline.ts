@@ -17,16 +17,34 @@ export function createFarTreeline(rng: Rng): Layer & { drawPath: (ctx: CanvasRen
       const clump = 0.5 + 0.5 * noise(x * 0.0035 + depth * 10, depth); // slow variation in stand height
       const base = groundTop(x) + 4 + yOff + 6 * noise(x * 0.01, 5 + depth);
       if (clump < 0.22 && r.chance(0.6)) { x += r.range(8, 30); continue; } // a gap
-      const h = (6 + 26 * clump * clump + r.range(0, 8)) * scale;
-      const w = r.range(6, 12) * scale;
-      const sk = r.range(-0.12, 0.12); // leaning tip
+      const h = (5 + 28 * clump * clump + r.range(0, 10) * r.next()) * scale;
+      const w = r.range(5, 13) * scale;
+      if (r.chance(0.28)) {
+        // a rounded deciduous crown among the spruce: a birch or aspen clump
+        const dw = w * r.range(1.3, 2.0), dh = h * r.range(0.55, 0.8);
+        pts.push(
+          x, base,
+          x + dw * 0.1, base - dh * 0.55,
+          x + dw * 0.3, base - dh * 0.9,
+          x + dw * 0.55, base - dh,
+          x + dw * 0.8, base - dh * 0.85,
+          x + dw * 0.95, base - dh * 0.5,
+          x + dw, base,
+        );
+        x += dw * r.range(0.7, 0.95);
+        continue;
+      }
+      const sk = r.range(-0.14, 0.14); // leaning tip
+      const ragged = r.range(0.3, 0.6);  // how far down the first side branches reach
       pts.push(
         x, base,
-        x + w * 0.22, base - h * 0.42,
-        x + w * 0.36, base - h * 0.52,
+        x + w * 0.18, base - h * ragged,
+        x + w * 0.3, base - h * (ragged + 0.15),
+        x + w * 0.4, base - h * 0.78,
         x + w * (0.5 + sk), base - h,
-        x + w * 0.64, base - h * 0.52,
-        x + w * 0.78, base - h * 0.42,
+        x + w * 0.6, base - h * 0.8,
+        x + w * 0.72, base - h * (ragged + 0.1),
+        x + w * 0.84, base - h * ragged * 0.9,
         x + w, base,
       );
       x += w * r.range(0.6, 0.95);
