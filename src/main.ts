@@ -11,6 +11,7 @@ import { sunPosition } from './astronomy/sun';
 import { moonState } from './astronomy/moon';
 import { createClock } from './time';
 import { WindField } from './wind/field';
+import { weatherFromParams } from './weather/controls';
 
 const params = new URLSearchParams(location.search);
 const location_ = {
@@ -22,16 +23,11 @@ const clock = createClock(params);
 const moon = moonState(clock.now(), location_.lat, location_.lon);
 const sun = sunPosition(clock.now(), location_.lat, location_.lon);
 
-// Step 2: weather is still fixed; light and season follow the scene clock.
-const weather = {
-  cloudCover: Number(params.get('cloud') ?? 0.35),
-  fog: Number(params.get('fog') ?? 0.08),
-  windSpeed: Number(params.get('wind') ?? 4),
-  windDir: Number(params.get('dir') ?? 240),
-  windGust: Number(params.get('gust') ?? NaN),
-};
+const weather = weatherFromParams(params);
 const wind = new WindField(createRng(SEED));
-wind.configure(weather.windSpeed, weather.windDir, Number.isNaN(weather.windGust) ? weather.windSpeed * 1.6 : weather.windGust);
+const applyWeather = () => wind.configure(weather.windSpeed, weather.windDir, weather.windGust);
+applyWeather();
+
 const canvas = document.getElementById('scene') as HTMLCanvasElement;
 const layers = buildScene(SEED, moon, () => weather.cloudCover).filter((l) => !params.has('skip') || !params.get('skip')!.split(',').some((n) => l.name.startsWith(n)));
 const renderer = createRenderer(canvas, layers);
@@ -63,8 +59,8 @@ startLoop({
 });
 
 if (import.meta.env.DEV) {
-  import('./dev/devPanel').then((m) => m.installDevPanel(canvas, clock, () => ({ sun, moon, light })));
+  import('./dev/devPanel').then((m) => m.installDevPanel(canvas, { clock, weather, onWeather: applyWeather, state: () => ({ sun, moon, light }) }));
   (window as unknown as { __yonder: unknown }).__yonder = {
-    layers, renderer, clock, wind, profile: () => renderer.profile(resolve(palette, light), light, t),
+    layers, renderer, clock, wind, weather, applyWeather, profile: () => renderer.profile(resolve(palette, light), light, t),
   };
 }
