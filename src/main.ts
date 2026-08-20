@@ -89,7 +89,8 @@ installGrain(createRng(SEED));
 // --- ui ---
 const overlay = createOverlay(document.getElementById('overlay') as HTMLElement);
 const label = createLabel(overlay.root, overlay.hold, (loc) => setPlace(loc));
-createTimeline(overlay.root, clock, overlay.hold, () => { scrubUntil = performance.now() + 2500; });
+const sunProbe = { elevation: 0, azimuth: 0 };
+createTimeline(overlay.root, clock, overlay.hold, () => { scrubUntil = performance.now() + 2500; }, (time) => sunPosition(new Date(time), place.lat, place.lon, sunProbe).elevation);
 label.setLocation(place);
 const browserChrome = createBrowserChrome();
 
@@ -159,6 +160,10 @@ startLoop({
     label.setTime(now, clock.offsetMs < 60e3);
   },
 });
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => { /* offline shell is optional */ }); });
+}
 
 if (import.meta.env.DEV) {
   import('./dev/devPanel').then((m) => m.installDevPanel(canvas, {

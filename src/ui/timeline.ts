@@ -8,11 +8,11 @@ const H = 3600e3;
  * seconds of stillness, or stays if the viewer taps the marker to lock. ←/→ step one hour
  * (and lock); Escape or 0 returns to now. The word "forecast" appears nowhere.
  */
-export function createTimeline(parent: HTMLElement, clock: Clock, hold: (on: boolean) => void, onScrub: (scrubbing: boolean) => void, range = 48 * H) {
+export function createTimeline(parent: HTMLElement, clock: Clock, hold: (on: boolean) => void, onScrub: (scrubbing: boolean) => void, sunElevationAt: (time: number) => number, range = 48 * H) {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'position:absolute;left:max(24px,env(safe-area-inset-left));right:max(24px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));height:28px;pointer-events:auto;cursor:ew-resize;touch-action:none';
   const line = document.createElement('div');
-  line.style.cssText = 'position:absolute;left:0;right:0;top:14px;height:1px;background:currentColor;opacity:.35';
+  line.style.cssText = 'position:absolute;left:0;right:0;top:14px;height:1px;background:currentColor;opacity:.9';
   const marker = document.createElement('div');
   marker.style.cssText = 'position:absolute;top:10px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:currentColor;opacity:.85;transition:transform 200ms';
   // Midnights as hairline ticks, so the two days ahead have a shape without a single word.
@@ -33,6 +33,16 @@ export function createTimeline(parent: HTMLElement, clock: Clock, hold: (on: boo
     const d = new Date(base);
     if (d.getDate() === tickDay) return;
     tickDay = d.getDate();
+    // The line itself carries the days: full where the sun is up, faint through the nights.
+    const stops: string[] = [];
+    const N = 96;
+    for (let i = 0; i <= N; i++) {
+      const el = sunElevationAt(base + (i / N) * range);
+      const a = 0.12 + 0.33 * Math.min(1, Math.max(0, (el + 6) / 12));
+      stops.push(`rgba(0,0,0,${a.toFixed(2)}) ${((i / N) * 100).toFixed(1)}%`);
+    }
+    const mask = `linear-gradient(to right, ${stops.join(',')})`;
+    line.style.setProperty('-webkit-mask-image', mask); line.style.setProperty('mask-image', mask);
     ticks.innerHTML = '';
     d.setHours(24, 0, 0, 0);
     for (let t = d.getTime(); t < base + range; t += 24 * H) {
@@ -46,6 +56,7 @@ export function createTimeline(parent: HTMLElement, clock: Clock, hold: (on: boo
     const f = frac();
     marker.style.left = `${f * 100}%`;
     label.style.left = `${f * 100}%`;
+    label.style.transform = f > 0.94 ? 'translateX(-100%)' : f < 0.04 ? 'none' : 'translateX(-50%)';
     label.textContent = clock.offsetMs < 60e3 ? '' : fmt.format(clock.now());
     marker.style.transform = locked ? 'scale(1.35)' : '';
   }

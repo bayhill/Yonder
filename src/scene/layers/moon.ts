@@ -14,6 +14,16 @@ export function createMoon(moon: MoonState): Layer {
       if (vis < 0.01 || moon.elevation < -1) return;
       skyPoint(moon.azimuth, moon.elevation, pt);
       const R = 17;
+      // A soft halo: wide and faint in clear air, tighter and brighter through haze or thin cloud.
+      const veil = Math.min(1, f.light.haze * 0.8 + f.light.cloud * 1.2);
+      const haloR = R * (5 + 3 * (1 - veil));
+      const halo = ctx.createRadialGradient(pt.x, pt.y, R * 0.8, pt.x, pt.y, haloR);
+      halo.addColorStop(0, f.colours.moon.lit);
+      halo.addColorStop(0.35, f.colours.moon.lit);
+      halo.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = vis * (0.05 + 0.14 * veil) * moon.fraction;
+      ctx.fillStyle = halo;
+      ctx.fillRect(pt.x - haloR, pt.y - haloR, haloR * 2, haloR * 2);
       ctx.globalAlpha = vis * 0.95;
       ctx.fillStyle = f.colours.moon.lit;
       ctx.beginPath(); ctx.arc(pt.x, pt.y, R, 0, Math.PI * 2); ctx.fill();

@@ -135,10 +135,13 @@ export function createResolver() {
     // greys down as cover grows. Undersides are a cooler, darker grey.
     mix(CLOUD_LIT, skyH, 0.12 + L.cloud * 0.25, tmp);
     mix(tmp, TWILIGHT_WARM, L.twilightGlow * 0.5, tmp);
+    // At night clouds lose their warmth entirely and sit as cool grey-blue against the sky.
     tmp.l = (tmp.l * (1 - L.skyDark * 0.72) + snowGlow * 1.5) * (1 - L.cloud * 0.12);
+    mix(tmp, NIGHT_CLOUD, Math.pow(L.skyDark, 1.5) * 0.8, tmp);
     cloud.lit = toHex(tmp);
     mix(CLOUD_SHADE, skyZ, 0.3, tmp);
     tmp.l = (tmp.l * (1 - L.skyDark * 0.74) + snowGlow * 1.5) * (1 - L.cloud * 0.22);
+    mix(tmp, NIGHT_CLOUD_SHADE, Math.pow(L.skyDark, 1.5) * 0.7, tmp);
     cloud.shade = toHex(tmp);
     moon.lit = toHex(mix(MOON, skyH, 0.15, tmp));
     moon.dark = toHex(mix(skyZ, MOON, 0.06, tmp));
@@ -164,6 +167,8 @@ const SUN_WARM: Oklch = { l: 0.86, c: 0.070, h: 70 };
 const SUN_DISC: Oklch = { l: 0.95, c: 0.045, h: 78 };
 const CLOUD_LIT: Oklch = { l: 0.95, c: 0.008, h: 80 };
 const CLOUD_SHADE: Oklch = { l: 0.70, c: 0.018, h: 245 };
+const NIGHT_CLOUD: Oklch = { l: 0.30, c: 0.022, h: 255 };
+const NIGHT_CLOUD_SHADE: Oklch = { l: 0.235, c: 0.024, h: 258 };
 const MOON: Oklch = { l: 0.93, c: 0.012, h: 95 };
 const STAR: Oklch = { l: 0.92, c: 0.01, h: 90 };
 /** Some roles want a quieter ramp than others. */
