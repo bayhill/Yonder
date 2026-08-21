@@ -64,7 +64,6 @@ describe('accumulation track', () => {
   });
 });
 
-import { parseForecast } from '../src/data/openMeteo';
 describe('thunderstorm code', () => {
   it('maps WMO 95+ to thunder', () => {
     const raw = { hourly: { time: ['2026-08-21T10:00', '2026-08-21T11:00'], temperature_2m: [20, 21], weather_code: [61, 95] } };
