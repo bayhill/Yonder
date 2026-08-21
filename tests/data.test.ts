@@ -63,3 +63,12 @@ describe('accumulation track', () => {
     expect(at(40).snow).toBeLessThan(at(18).snow * 0.3);
   });
 });
+
+import { parseForecast } from '../src/data/openMeteo';
+describe('thunderstorm code', () => {
+  it('maps WMO 95+ to thunder', () => {
+    const raw = { hourly: { time: ['2026-08-21T10:00', '2026-08-21T11:00'], temperature_2m: [20, 21], weather_code: [61, 95] } };
+    const s = parseForecast(raw as never, { name: 'x', lat: 0, lon: 0 });
+    expect(s.samples.map((x) => x.thunder)).toEqual([0, 1]);
+  });
+});

@@ -10,6 +10,8 @@ export interface FrameWeather {
   snowCover: number; wet: number;
   /** Hoarfrost 0..1 (inferred: cold, clear, calm, humid, early). */
   frost: number;
+  /** Thunderstorm 0..1. */
+  thunder: number;
 }
 
 /** Everything a layer needs to draw one frame. Built once per frame, never per layer. */

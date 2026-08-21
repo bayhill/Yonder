@@ -24,12 +24,13 @@ export function sampleAt(samples: WeatherSample[], time: number, out: WeatherSam
   out.windDir = (a.windDir + d * t + 360) % 360;
   out.humidity = L(a.humidity, b.humidity);
   out.visibility = L(a.visibility, b.visibility);
+  out.thunder = L(a.thunder, b.thunder);
   out.snowDepth = a.snowDepth == null || b.snowDepth == null ? (a.snowDepth ?? b.snowDepth) : L(a.snowDepth, b.snowDepth);
   return out;
 }
 
 export const blank = (): WeatherSample => ({
   time: 0, temperature: 10, rain: 0, snow: 0, cloudCover: 0.3, cloudLow: 0, cloudMid: 0, cloudHigh: 0,
-  windSpeed: 3, windDir: 240, windGust: 4, humidity: 0.7, visibility: 24000, snowDepth: null,
+  windSpeed: 3, windDir: 240, windGust: 4, humidity: 0.7, visibility: 24000, snowDepth: null, thunder: 0,
 });
 function copy(s: WeatherSample, out: WeatherSample): WeatherSample { return Object.assign(out, s); }

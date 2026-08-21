@@ -25,5 +25,6 @@ export class SmoothedWeather {
     v.snow = approach(v.snow, t.snow, tau, dt);
     v.temperature = approach(v.temperature, t.temperature, tau, dt);
     v.humidity = approach(v.humidity, t.humidity, tau, dt);
+    v.thunder = approach(v.thunder, t.thunder, tau, dt);
   }
 }

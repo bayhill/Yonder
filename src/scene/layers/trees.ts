@@ -17,6 +17,8 @@ import { RAMP } from '../../colour/resolve';
 import { Oscillator } from '../../core/smoothing';
 import type { WindField, WindSample } from '../../wind/field';
 
+const CANO_TMP = new Float32Array(8);
+
 /** A group of trees at a shared depth. Drawn back-to-front within the group. */
 export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[] } {
   const trees = specs.map((s, i) => generateTree(s, rng.fork(`tree${i}`)));
@@ -25,8 +27,13 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
   // Per-tree motion: the stem is a lightly damped oscillator driven by the wind at the crown;
   // the canopy is a second, faster oscillator riding on the stem tip. Values are tip deflections in px.
   const stem = trees.map((t) => new Oscillator(0, t.kind === 'birch' ? 0.45 : 0.32, t.kind === 'birch' ? 0.32 : 0.4));
-  const canopy = trees.map((t) => new Oscillator(0, t.kind === 'birch' ? 0.9 : 0.7, 0.45));
-  const prevStem = new Float32Array(trees.length), prevCanopy = new Float32Array(trees.length);
+  // The canopy is not one mass: each tree carries a handful of branch oscillators at slightly
+  // different natural frequencies, and every foliage mass belongs to one of them.
+  const GROUPS = 6;
+  const canopy = trees.map((t) => Array.from({ length: GROUPS }, (_, g) =>
+    new Oscillator(0, (t.kind === 'birch' ? 0.9 : 0.7) * (0.78 + 0.1 * g + ((g * 7) % 3) * 0.04), 0.42 + 0.03 * (g % 3))));
+  const groupOf = trees.map((t) => { const a = new Uint8Array(t.foliage.length); for (let i = 0; i < a.length; i++) a[i] = (Math.floor(i / 5) * 5 + i * 3) % GROUPS; return a; });
+  const prevStem = new Float32Array(trees.length), prevCanopy = trees.map(() => new Float32Array(GROUPS));
   const shiver = new Float32Array(trees.length), prevShiver = new Float32Array(trees.length);
   const phase = trees.map((_, i) => i * 1.7);
   const ws: WindSample = { bend: 0, flutter: 0 };
@@ -39,14 +46,16 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
       t += dt;
       for (let i = 0; i < trees.length; i++) {
         const tr = trees[i];
-        prevStem[i] = stem[i].value; prevCanopy[i] = canopy[i].value; prevShiver[i] = shiver[i];
+        prevStem[i] = stem[i].value; prevShiver[i] = shiver[i];
+        for (let g = 0; g < GROUPS; g++) prevCanopy[i][g] = canopy[i][g].value;
         wind.sample(tr.crownX, tr.crownY, ws);
         const birch = tr.kind === 'birch';
         // Steady-state tip deflection at full wind: birch ~7% of height, pine ~3%.
         const stemTarget = ws.bend * tr.height * (birch ? 0.07 : 0.03);
         stem[i].step(stemTarget, dt);
-        // The canopy is pushed by the same wind but lags and overshoots the stem a little.
-        canopy[i].step(ws.bend * tr.height * (birch ? 0.045 : 0.015), dt);
+        // Each branch group is pushed by the same wind but lags and swings on its own.
+        const canopyTarget = ws.bend * tr.height * (birch ? 0.045 : 0.015);
+        for (let g = 0; g < GROUPS; g++) canopy[i][g].step(canopyTarget * (0.85 + 0.05 * g), dt);
         const sh = ws.flutter * tr.height * (birch ? 0.012 : 0.003);
         shiver[i] = sh * (Math.sin(t * 11 + phase[i]) * 0.6 + Math.sin(t * 17.3 + phase[i] * 2) * 0.4);
       }
@@ -95,8 +104,10 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
         const far = t.depth > 0.35;
         const trunkCol = t.kind === 'birch' ? 'bark' : 'trunk';
         const tip = prevStem[ti] + (stem[ti].value - prevStem[ti]) * a;
-        const cano = prevCanopy[ti] + (canopy[ti].value - prevCanopy[ti]) * a;
         const shv = prevShiver[ti] + (shiver[ti] - prevShiver[ti]) * a;
+        const canoG = CANO_TMP;
+        for (let g = 0; g < GROUPS; g++) canoG[g] = prevCanopy[ti][g] + (canopy[ti][g].value - prevCanopy[ti][g]) * a;
+        const groups = groupOf[ti];
         // Cantilever bending: deflection grows with the square of height, and a bent stem
         // dips very slightly, so x += tip·s², y += |tip|·s²·0.18.
         ctx.fillStyle = far ? c.atmos(trunkCol, t.depth) : c.ramp(trunkCol)[2];
@@ -131,7 +142,7 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
             any = true;
             // Foliage rides the bent stem, plus its own canopy motion (outer/higher blobs travel further).
             const sB = t.blobS[bi];
-            const ox = tip * sB * sB + (cano + shv) * b.sway;
+            const ox = tip * sB * sB + (canoG[groups[bi]] + shv) * b.sway;
             const oy = Math.abs(ox) * 0.10;
             ctx.moveTo(b.x + ox + b.verts[0] * sc, b.y + oy + b.verts[1] * sc);
             for (let i = 2; i < b.verts.length; i += 2) ctx.lineTo(b.x + ox + b.verts[i] * sc, b.y + oy + b.verts[i + 1] * sc);
@@ -152,7 +163,7 @@ export function createTrees(specs: TreeSpec[], rng: Rng): Layer & { trees: Tree[
           for (let bi = 0; bi < t.foliage.length; bi++) {
             const b = t.foliage[bi];
             const sB = t.blobS[bi];
-            const ox = tip * sB * sB + (cano + shv) * b.sway, oy = Math.abs(ox) * 0.10;
+            const ox = tip * sB * sB + (canoG[groups[bi]] + shv) * b.sway, oy = Math.abs(ox) * 0.10;
             const v = b.verts;
             // upper vertices (dy < 0) form the cap, closed along a slightly lower line
             let started = false;

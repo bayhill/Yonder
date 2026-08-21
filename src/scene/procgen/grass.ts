@@ -18,6 +18,9 @@ export interface GrassBand {
   prevX: Float32Array; prevY: Float32Array;
   /** Spring velocity of the tip (x only; y follows the arc). */
   vel: Float32Array;
+  /** Mid-blade control offset (x), its previous value and velocity: a faster spring than the tip,
+   *  so in a gust the lower blade leads and the tip lags through an S-curve — a whip, not an arc. */
+  midX: Float32Array; prevMid: Float32Array; midV: Float32Array;
   /** Per-blade spring stiffness (rad/s). Shorter, stiffer blades respond faster. */
   omega: Float32Array;
 }
@@ -44,6 +47,7 @@ export function generateBand(spec: BandSpec, rng: Rng): GrassBand {
     lean: new Float32Array(n), tone: new Uint8Array(n), phase: new Float32Array(n),
     tipX: new Float32Array(n), tipY: new Float32Array(n),
     prevX: new Float32Array(n), prevY: new Float32Array(n), vel: new Float32Array(n), omega: new Float32Array(n),
+    midX: new Float32Array(n), prevMid: new Float32Array(n), midV: new Float32Array(n),
   };
   // Generate, then sort by y so nearer blades draw over farther ones.
   const order: number[] = [];
@@ -76,11 +80,13 @@ export function generateBand(spec: BandSpec, rng: Rng): GrassBand {
     x: new Float32Array(n), y: new Float32Array(n), h: new Float32Array(n), w: new Float32Array(n),
     lean: new Float32Array(n), tone: new Uint8Array(n), phase: new Float32Array(n),
     tipX: new Float32Array(n), tipY: new Float32Array(n),
-    prevX: new Float32Array(n), prevY: new Float32Array(n), vel: new Float32Array(n), omega: new Float32Array(n) };
+    prevX: new Float32Array(n), prevY: new Float32Array(n), vel: new Float32Array(n), omega: new Float32Array(n),
+    midX: new Float32Array(n), prevMid: new Float32Array(n), midV: new Float32Array(n) };
   order.forEach((src, dst) => {
     sorted.x[dst] = band.x[src]; sorted.y[dst] = band.y[src]; sorted.h[dst] = band.h[src]; sorted.w[dst] = band.w[src];
     sorted.lean[dst] = band.lean[src]; sorted.tone[dst] = band.tone[src]; sorted.phase[dst] = band.phase[src];
     sorted.tipX[dst] = sorted.prevX[dst] = band.lean[src]; sorted.tipY[dst] = sorted.prevY[dst] = -band.h[src];
+    sorted.midX[dst] = sorted.prevMid[dst] = band.lean[src] * 0.28;
     sorted.omega[dst] = 5.5 + 2.5 * (spec.hMax - band.h[src]) / (spec.hMax - spec.hMin + 1e-6) + rng.range(-0.6, 0.6);
   });
   return sorted;
@@ -105,6 +111,12 @@ export function stepBand(band: GrassBand, dt: number, bend: Float32Array, amp: n
     band.vel[i] = (c2 - w * (x0 + c2 * dt)) * e;
     const tx = target + x;
     band.tipX[i] = tx;
+    // The mid-point chases the wind target faster than the tip does.
+    band.prevMid[i] = band.midX[i];
+    const wm = w * 1.9, m0 = band.midX[i] - target * 0.28, mv0 = band.midV[i];
+    const em = Math.exp(-wm * dt), cm = mv0 + wm * m0, xm = (m0 + cm * dt) * em;
+    band.midV[i] = (cm - wm * (m0 + cm * dt)) * em;
+    band.midX[i] = target * 0.28 + xm;
     // The tip follows an arc: a bent blade is a little shorter on screen.
     const r = tx / h;
     band.tipY[i] = -h * (1 - 0.16 * r * r);
@@ -112,9 +124,9 @@ export function stepBand(band: GrassBand, dt: number, bend: Float32Array, amp: n
 }
 
 /** Draws one blade as a tapered curved shape. Caller sets fillStyle and calls beginPath/fill. */
-export function bladePath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, tipX: number, tipY: number): void {
-  // Control point: a little over halfway up, biased toward the base so the blade bends at the top.
-  const cx = x + tipX * 0.28, cy = y + tipY * 0.58;
+export function bladePath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, tipX: number, tipY: number, midX = tipX * 0.28): void {
+  // Control point: a little over halfway up; its x is the lagging mid-spring, so the curve whips.
+  const cx = x + midX, cy = y + tipY * 0.58;
   const hw = w * 0.5;
   ctx.moveTo(x - hw, y);
   ctx.quadraticCurveTo(cx - hw * 0.5, cy, x + tipX, y + tipY);

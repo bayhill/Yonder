@@ -14,6 +14,7 @@ export interface WeatherSample {
   humidity: number;      // 0..1
   visibility: number;    // metres
   snowDepth: number | null; // metres, when the model provides it
+  thunder: number;       // 0..1, thunderstorm reported this hour
 }
 
 export interface WeatherSeries {

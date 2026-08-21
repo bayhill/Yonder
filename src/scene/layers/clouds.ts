@@ -62,7 +62,7 @@ function hexToRgb(h: string): [number, number, number] {
   return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 }
 
-export function createClouds(rng: Rng, cover: () => number): Layer {
+export function createClouds(rng: Rng, cover: () => number): Layer & { canvas: HTMLCanvasElement; active: () => boolean } {
   const r = rng.fork('clouds');
   const tileA = makeTile(r.fork('a'), 4);
   const tileB = makeTile(r.fork('b'), 3);
@@ -97,6 +97,8 @@ export function createClouds(rng: Rng, cover: () => number): Layer {
 
   return {
     name: 'clouds',
+    canvas,
+    active: () => clamp01(cover()) >= 0.005,
     update(dt, _t, wind: WindField) {
       // Scroll with the wind; higher layers move slower on screen; shapes morph slowly over time.
       const s = (0.15 + wind.strength) * motionScale();

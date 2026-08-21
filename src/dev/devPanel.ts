@@ -125,6 +125,7 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
   section('precipitation');
   slider('rain', 0, 10, 0.1, () => cur().rain, (v) => { takeOver(); weather.rain = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} mm/h`);
   slider('snow', 0, 10, 0.1, () => cur().snow, (v) => { takeOver(); weather.snow = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} mm/h`);
+  slider('thunder', 0, 1, 0.05, () => cur().thunder, (v) => { takeOver(); weather.thunder = v; hooks.onWeather(); });
   slider('humid', 0, 1, 0.01, () => cur().humidity, (v) => { takeOver(); weather.humidity = v; hooks.onWeather(); }, (v) => `${Math.round(v * 100)} %`);
   slider('temp', -25, 32, 0.5, () => cur().temperature, (v) => { takeOver(); weather.temperature = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} °C`);
 
@@ -138,7 +139,7 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     const set = (k: string, v: number, d: number, digits = 2) => (Math.abs(v - d) < 1e-9 ? p.delete(k) : p.set(k, String(+v.toFixed(digits))));
     set('cloud', weather.cloudCover, 0.35); set('fog', weather.fog, 0.08);
     set('wind', weather.windSpeed, 4, 1); set('gust', weather.windGust, 6.5, 1); set('dir', weather.windDir, 240, 0);
-    set('rain', weather.rain, 0, 1); set('snow', weather.snow, 0, 1); set('temp', weather.temperature, 16, 1); set('hum', weather.humidity, 0.7);
+    set('rain', weather.rain, 0, 1); set('snow', weather.snow, 0, 1); set('temp', weather.temperature, 16, 1); set('hum', weather.humidity, 0.7); set('thunder', weather.thunder, 0);
     p.delete('hour'); p.delete('doy');
     if (clock.offsetMs !== 0) p.set('time', clock.now().toISOString()); else p.delete('time');
     history.replaceState(null, '', `${location.pathname}${p.size ? '?' + p.toString() : ''}`);

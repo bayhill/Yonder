@@ -12,10 +12,11 @@ export interface WeatherControls {
   snow: number;         // mm/h water equivalent (Step 6)
   temperature: number;  // °C (Step 6)
   humidity: number;     // 0..1 relative humidity (dawn mist)
+  thunder: number;      // 0..1 thunderstorm (sheet lightning)
 }
 
 export const DEFAULT_WEATHER: WeatherControls = {
-  cloudCover: 0.35, fog: 0.08, windSpeed: 4, windGust: 6.5, windDir: 240, rain: 0, snow: 0, temperature: 16, humidity: 0.7,
+  cloudCover: 0.35, fog: 0.08, windSpeed: 4, windGust: 6.5, windDir: 240, rain: 0, snow: 0, temperature: 16, humidity: 0.7, thunder: 0,
 };
 
 /** Reads overrides from URL parameters (cloud, fog, wind, gust, dir, rain, snow, temp). */
@@ -32,5 +33,6 @@ export function weatherFromParams(p: URLSearchParams, base: WeatherControls = DE
     snow: n('snow', base.snow),
     temperature: n('temp', base.temperature),
     humidity: n('hum', base.humidity),
+    thunder: n('thunder', base.thunder),
   };
 }

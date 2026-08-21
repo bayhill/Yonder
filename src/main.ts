@@ -50,7 +50,7 @@ const smoothed = new SmoothedWeather(target);
 const accumulation = new Accumulation();              // manual mode integrates live
 const sim = { speed: 1 };
 const wind = new WindField(createRng(SEED));
-const frameWeather: FrameWeather = { rain: 0, snow: 0, temperature: 15, fog: 0, cloudCover: 0, snowCover: 0, wet: 0, frost: 0 };
+const frameWeather: FrameWeather = { rain: 0, snow: 0, temperature: 15, fog: 0, cloudCover: 0, snowCover: 0, wet: 0, frost: 0, thunder: 0 };
 
 let series: WeatherSeries | null = null;
 let track: AccumulationTrack | null = null;
@@ -150,7 +150,7 @@ const loopCb = {
     }
     frameWeather.rain = w.rain; frameWeather.snow = w.snow; frameWeather.temperature = w.temperature;
     frameWeather.fog = Math.min(1, w.fog + mistAmount(w.humidity, w.windSpeed, w.cloudCover, sun.elevation));
-    frameWeather.cloudCover = w.cloudCover;
+    frameWeather.cloudCover = w.cloudCover; frameWeather.thunder = w.thunder;
     frameWeather.snowCover = accumulation.snow; frameWeather.wet = accumulation.wet;
     // Frost settles and lifts over tens of minutes, not instantly.
     frameWeather.frost += (frostAmount(w.temperature, w.humidity, w.windSpeed, w.cloudCover, sun.elevation) - frameWeather.frost) * (1 - Math.exp(-dt / (performance.now() < scrubUntil ? 0.9 : source.mode === 'live' ? 600 : 2)));

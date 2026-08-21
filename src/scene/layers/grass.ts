@@ -59,7 +59,8 @@ export function createGrassBand(spec: BandSpec, role: Role, depth: number, rng: 
           if (bx < x0 || bx > x1) continue;
           const tx = (band.prevX[i] + (band.tipX[i] - band.prevX[i]) * a) * g * sag;
           const ty = (band.prevY[i] + (band.tipY[i] - band.prevY[i]) * a) * g;
-          bladePath(ctx, band.x[i], band.y[i], band.w[i] * (0.8 + 0.2 * g), tx, ty);
+          const mx = (band.prevMid[i] + (band.midX[i] - band.prevMid[i]) * a) * g * sag;
+          bladePath(ctx, band.x[i], band.y[i], band.w[i] * (0.8 + 0.2 * g), tx, ty, mx);
         }
         ctx.fill();
       }

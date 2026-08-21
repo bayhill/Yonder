@@ -45,9 +45,14 @@ scripts/       icons.mjs renders the PWA icons
 
 ## Scene notes
 
-Layers, back to front: sky · stars · moon · sun · clouds · far hills · birds · far treeline · shimmer · ground ·
-far snow · far trees · far snowfall · fog · back grass · near trees · post · mid grass · near snow · front grass ·
-near snowfall · rain. Static layers are cached offscreen and redrawn only when colours move a notch. Clouds are
+Layers, back to front: sky · stars · moon · sun · clouds · lightning · rainbow · rays · far hills · birds · far treeline ·
+shimmer · ground · far snow · far trees · far snowfall · fog · back grass · near trees · leaves · post · mid grass ·
+flowers · near snow · front grass · cloud shadows · near snowfall · rain. Static layers are cached offscreen and redrawn only when colours move a notch. The sky is computed per texel
+(128×64, upscaled): horizon brightening, warmth around the sun's azimuth, and at twilight the Belt of Venus over the
+Earth's shadow on the anti-solar side. Cloud shadows reuse the cloud density buffer, flipped onto the meadow. The
+rainbow is placed at 42°/51° around the anti-solar point and only appears with rain under a low sun. Thunderstorm
+codes (WMO 95+) give slow sheet lightning in the deck. Grass blades carry a second, faster spring at mid-height so
+gusts whip them through an S-curve; each tree canopy swings on six branch oscillators rather than one. Clouds are
 a noise field rebuilt at 20 Hz. A few times an hour, in daylight and fair weather, a line of distant birds crosses.
 The sun is drawn only when it is low and veiled. Seasonal life is driven by continuous scalars in `colour/season.ts`:
 leaf-out, midsummer wildflowers (`flowers`), the October leaf fall (`leaves`), and grass height; hoarfrost and dawn

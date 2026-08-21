@@ -16,5 +16,6 @@ export function controlsFromSample(s: WeatherSample, out: WeatherControls): Weat
   out.snow = Math.max(0, s.snow);
   out.temperature = s.temperature;
   out.humidity = clamp01(s.humidity);
+  out.thunder = clamp01(s.thunder);
   return out;
 }

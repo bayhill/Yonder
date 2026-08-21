@@ -16,7 +16,7 @@ export interface Resolved {
   hex(role: Role): string;
   /** Role colour pushed toward the far atmosphere by depth (0 near .. 1 far) and haze. */
   atmos(role: Role, depth: number): string;
-  sky: { zenith: string; mid: string; horizon: string; glow: string; sunGlow: string };
+  sky: { zenith: string; mid: string; horizon: string; glow: string; sunGlow: string; venus: string; earthShadow: string };
   /** Moon disc and its shadowed side. */
   moon: { lit: string; dark: string };
   /** Cloud colours: sunlit tops and shaded undersides. */
@@ -34,7 +34,7 @@ export function createResolver() {
   const lit: Record<Role, Oklch> = Object.fromEntries(ROLES.map((r) => [r, { l: 0, c: 0, h: 0 }])) as Record<Role, Oklch>;
   const ramps: Record<Role, string[]> = Object.fromEntries(ROLES.map((r) => [r, new Array(RAMP).fill('#000')])) as Record<Role, string[]>;
   const atmosTable: Record<Role, string[]> = Object.fromEntries(ROLES.map((r) => [r, new Array(DEPTHS + 1).fill('#000')])) as Record<Role, string[]>;
-  const sky = { zenith: '#000', mid: '#000', horizon: '#000', glow: '#000', sunGlow: '#000' };
+  const sky = { zenith: '#000', mid: '#000', horizon: '#000', glow: '#000', sunGlow: '#000', venus: '#000', earthShadow: '#000' };
   const moon = { lit: '#000', dark: '#000' };
   const cloud = { lit: '#000', shade: '#000' };
   const skyZ: Oklch = { l: 0, c: 0, h: 0 }, skyH: Oklch = { l: 0, c: 0, h: 0 };
@@ -131,6 +131,10 @@ export function createResolver() {
     sky.glow = toHex(adjust(tmp, 0.01, 0.01, 0, tmp));
     mix(skyH, SUN_WARM, 0.35 + L.twilightGlow * 0.5, tmp);
     sky.sunGlow = toHex(adjust(tmp, 0.06 * (1 - L.skyDark), 0.02, 0, tmp));
+    // Opposite the low sun: the Belt of Venus (rose) over the Earth's own shadow (blue-grey).
+    sky.venus = toHex(mix(skyH, VENUS, 0.7, tmp));
+    mix(skyH, EARTH_SHADOW, 0.75, tmp); tmp.l = Math.min(tmp.l, skyH.l - 0.06);
+    sky.earthShadow = toHex(tmp);
     // Clouds: tops near white by day, warmed at twilight, dark blue-grey at night; the deck
     // greys down as cover grows. Undersides are a cooler, darker grey.
     mix(CLOUD_LIT, skyH, 0.12 + L.cloud * 0.25, tmp);
@@ -165,6 +169,8 @@ const NIGHT_HORIZON: Oklch = { l: 0.31, c: 0.030, h: 250 };
 const TWILIGHT_WARM: Oklch = { l: 0.72, c: 0.11, h: 48 };
 const SUN_WARM: Oklch = { l: 0.86, c: 0.070, h: 70 };
 const SUN_DISC: Oklch = { l: 0.95, c: 0.045, h: 78 };
+const VENUS: Oklch = { l: 0.74, c: 0.075, h: 15 };
+const EARTH_SHADOW: Oklch = { l: 0.46, c: 0.045, h: 262 };
 const CLOUD_LIT: Oklch = { l: 0.95, c: 0.008, h: 80 };
 const CLOUD_SHADE: Oklch = { l: 0.70, c: 0.018, h: 245 };
 const NIGHT_CLOUD: Oklch = { l: 0.30, c: 0.022, h: 255 };

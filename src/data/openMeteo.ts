@@ -2,7 +2,7 @@ import type { Location, WeatherSample, WeatherSeries } from './types';
 
 const HOURLY = [
   'temperature_2m', 'rain', 'snowfall', 'cloud_cover', 'cloud_cover_low', 'cloud_cover_mid', 'cloud_cover_high',
-  'wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m', 'relative_humidity_2m', 'visibility', 'snow_depth',
+  'wind_speed_10m', 'wind_direction_10m', 'wind_gusts_10m', 'relative_humidity_2m', 'visibility', 'snow_depth', 'weather_code',
 ].join(',');
 
 export function forecastUrl(loc: Location): string {
@@ -37,6 +37,7 @@ export function parseForecast(raw: Raw, loc: Location, fetchedAt = Date.now()): 
     humidity: num('relative_humidity_2m', i, 70) / 100,
     visibility: num('visibility', i, 24000),
     snowDepth: finiteOrNull((h.snow_depth as Array<number | null> | undefined)?.[i]),
+    thunder: num('weather_code', i) >= 95 ? 1 : 0,   // WMO 95, 96, 99: thunderstorm
   }));
   return { location: loc, fetchedAt, samples };
 }

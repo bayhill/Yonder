@@ -31,6 +31,8 @@ export interface Light {
   twilightGlow: number;
   /** Sun-side horizon glow strength (low sun, clear sky). */
   sunGlow: number;
+  /** Anti-solar twilight arch strength (Belt of Venus and Earth shadow), 0..1. */
+  venus: number;
   /** Visible stars, 0..1 (night × clear). */
   stars: number;
   /** Moon visibility 0..1 (up × clear × dark enough to see). */
@@ -89,6 +91,7 @@ export function computeLight(i: LightInput, out: Light = blankLight()): Light {
   out.skyDark = 1 - smoothstep(-16, 4, el);
   out.twilightGlow = (smoothstep(-12, -4, el) * (1 - smoothstep(2, 10, el))) * lerp(1, 0.15, cloud);
   out.sunGlow = (1 - smoothstep(4, 22, el)) * smoothstep(-8, 0, el) * lerp(1, 0.1, cloud);
+  out.venus = smoothstep(-7, -3.5, el) * (1 - smoothstep(-0.5, 4, el)) * clear * clear * (1 - i.fog * 0.8);
   out.stars = (1 - smoothstep(-16, -8, el)) * clear * clear;
   out.moon = moonUp * clear * (1 - smoothstep(-6, 6, el));
   const elRad = Math.max(3, el) * (Math.PI / 180);
@@ -103,5 +106,5 @@ export function computeLight(i: LightInput, out: Light = blankLight()): Light {
 
 export const blankLight = (): Light => ({
   brightness: 1, warmth: 0, saturation: 1, dirX: 0.5, contrast: 0.5, haze: 0.3, skyDark: 0, lift: 0,
-  twilightGlow: 0, sunGlow: 0, stars: 0, moon: 0, shadowLength: 2, sunElevation: 20, sunAzimuth: 200, cloud: 0, wet: 0, snowCover: 0,
+  twilightGlow: 0, sunGlow: 0, venus: 0, stars: 0, moon: 0, shadowLength: 2, sunElevation: 20, sunAzimuth: 200, cloud: 0, wet: 0, snowCover: 0,
 });
