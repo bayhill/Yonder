@@ -28,6 +28,7 @@ import { createTimeline } from './ui/timeline';
 import { createBrowserChrome } from './ui/chrome';
 import { describeScene } from './ui/describe';
 import { createCurtain } from './ui/curtain';
+import { createTemperature } from './ui/temperature';
 
 const params = new URLSearchParams(location.search);
 const place: Location = {
@@ -95,6 +96,8 @@ installGrain(createRng(SEED));
 const curtain = createCurtain();
 const overlay = createOverlay(document.getElementById('overlay') as HTMLElement);
 const label = createLabel(overlay.root, overlay.hold, (loc) => setPlace(loc));
+const temperature = createTemperature(document.body);
+overlay.onVisible((on) => temperature.raise(on));
 const sunProbe = { elevation: 0, azimuth: 0 };
 createTimeline(overlay.root, clock, overlay.hold, () => { scrubUntil = performance.now() + 2500; }, (time) => sunPosition(new Date(time), place.lat, place.lon, sunProbe).elevation);
 label.setLocation(place);
@@ -173,6 +176,7 @@ const loopCb = {
     browserChrome.update(colours.version, colours.sky, colours.hex('grassFar'), colours.atmos('farTreeline', 0.7));
     overlay.setInk(light.brightness * (1 - light.skyDark * 0.6));
     label.setTime(now, clock.offsetMs < 60e3);
+    temperature.set(w.temperature);
     if (performance.now() - describedAt > 60e3) { describedAt = performance.now(); canvas.setAttribute('aria-label', describeScene(place.name, now, w, sun.elevation, accumulation.snow)); }
   },
 };

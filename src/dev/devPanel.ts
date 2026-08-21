@@ -35,6 +35,11 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     'background:rgba(12,16,20,.62);backdrop-filter:blur(6px);color:#e8ecef',
     'font:11px/1.45 ui-monospace,Menlo,monospace;user-select:none',
   ].join(';');
+  // Hidden state is remembered (and `?panel=0` / `?panel=1` overrides it), so the illustration
+  // can be reviewed in dev without the panel coming back on every reload.
+  const panelParam = new URLSearchParams(location.search).get('panel');
+  const hidden = panelParam != null ? panelParam === '0' : localStorage.getItem('yonder:devpanel') === 'hidden';
+  if (hidden) root.style.display = 'none';
   document.body.appendChild(root);
 
   const readout = document.createElement('div');
@@ -153,7 +158,7 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
   const H = 3600e3;
   window.addEventListener('keydown', (e) => {
     if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
-    if (e.key === '`') root.style.display = root.style.display === 'none' ? '' : 'none';
+    if (e.key === '`') { const hide = root.style.display !== 'none'; root.style.display = hide ? 'none' : ''; localStorage.setItem('yonder:devpanel', hide ? 'hidden' : 'shown'); }
     if (e.key === 's' || e.key === 'S') {
       canvas.toBlob((blob) => {
         if (!blob) return;

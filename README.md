@@ -10,7 +10,7 @@ Live: https://bayhill.github.io/Yonder/
 | ![summer noon](docs/reference/summer-noon.jpg) | ![spring dawn mist](docs/reference/spring-dawn-mist.jpg) |
 | ![autumn dusk overcast](docs/reference/autumn-dusk-overcast.jpg) | ![winter noon sun](docs/reference/winter-noon-sun.jpg) |
 
-Default place is Norrtälje. Click the place name for another (or "here"). Move the pointer for the
+Default place is Norrtälje. Click the place name for another (or "here"). The temperature sits top right, always. Move the pointer for the
 timeline; drag to go up to 48 hours ahead, ←/→ step an hour, Escape returns to now. It installs as a
 full-screen web app on a phone.
 
@@ -23,7 +23,7 @@ npm test         # vitest
 npm run build    # typecheck + static build into dist/
 ```
 
-In dev a control panel (toggle with `` ` ``) exposes time, time-lapse speed, cloud, fog, wind, rain, snow, humidity
+In dev a control panel (toggle with `` ` ``; the state is remembered, `?panel=0|1` overrides) exposes time, time-lapse speed, cloud, fog, wind, rain, snow, humidity
 and temperature; every change is mirrored into the URL. Parameters: `?hour=13.5&doy=200&time=ISO&cloud=0.5&fog=0.1`
 `&wind=8&gust=12&dir=240&rain=2&snow=1.5&temp=-3&hum=0.95`, `?lat=&lon=&name=` place, `?vp=420x840` fixed viewport,
 `?skip=grass,trees` hides layers. Any weather parameter switches the scene from live data to the sliders.
