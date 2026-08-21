@@ -20,6 +20,8 @@ export interface DevHooks {
   accumulation: Accumulation;
   /** 'live' = Open-Meteo drives the weather; 'manual' = the sliders do. */
   source: { mode: 'live' | 'manual' };
+  /** The smoothed live values, so the sliders can show the truth while live. */
+  live: () => WeatherControls;
   store: () => { status: string; samples: number };
   onLive: () => void;
   /** Called after any weather change so dependents (wind field…) can reconfigure. */
@@ -29,6 +31,10 @@ export interface DevHooks {
 
 export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
   const { clock, weather, sim, accumulation, source } = hooks;
+  // While live, the weather sliders read the live values; the first touch copies them into the
+  // manual set and takes over from there, so nothing jumps.
+  const cur = (): WeatherControls => (source.mode === 'live' ? hooks.live() : weather);
+  const takeOver = () => { if (source.mode === 'live') Object.assign(weather, hooks.live()); };
   const root = document.createElement('div');
   root.style.cssText = [
     'position:fixed;left:10px;bottom:10px;z-index:9;width:250px;padding:10px 12px;border-radius:6px',
@@ -106,21 +112,21 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
 
   // --- sky ---
   section('sky');
-  slider('cloud', 0, 1, 0.01, () => weather.cloudCover, (v) => { weather.cloudCover = v; hooks.onWeather(); });
-  slider('fog', 0, 1, 0.01, () => weather.fog, (v) => { weather.fog = v; hooks.onWeather(); });
+  slider('cloud', 0, 1, 0.01, () => cur().cloudCover, (v) => { takeOver(); weather.cloudCover = v; hooks.onWeather(); });
+  slider('fog', 0, 1, 0.01, () => cur().fog, (v) => { takeOver(); weather.fog = v; hooks.onWeather(); });
 
   // --- wind ---
   section('wind');
-  slider('speed', 0, 25, 0.1, () => weather.windSpeed, (v) => { weather.windSpeed = v; if (weather.windGust < v) weather.windGust = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} m/s`);
-  slider('gust', 0, 35, 0.1, () => weather.windGust, (v) => { weather.windGust = Math.max(v, weather.windSpeed); hooks.onWeather(); }, (v) => `${v.toFixed(1)} m/s`);
-  slider('from', 0, 359, 1, () => weather.windDir, (v) => { weather.windDir = v; hooks.onWeather(); }, (v) => `${v.toFixed(0)}° ${compass(v)}`);
+  slider('speed', 0, 25, 0.1, () => cur().windSpeed, (v) => { takeOver(); weather.windSpeed = v; if (weather.windGust < v) weather.windGust = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} m/s`);
+  slider('gust', 0, 35, 0.1, () => cur().windGust, (v) => { takeOver(); weather.windGust = Math.max(v, weather.windSpeed); hooks.onWeather(); }, (v) => `${v.toFixed(1)} m/s`);
+  slider('from', 0, 359, 1, () => cur().windDir, (v) => { takeOver(); weather.windDir = v; hooks.onWeather(); }, (v) => `${v.toFixed(0)}° ${compass(v)}`);
 
   // --- precipitation (Step 6) ---
   section('precipitation');
-  slider('rain', 0, 10, 0.1, () => weather.rain, (v) => { weather.rain = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} mm/h`);
-  slider('snow', 0, 10, 0.1, () => weather.snow, (v) => { weather.snow = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} mm/h`);
-  slider('humid', 0, 1, 0.01, () => weather.humidity, (v) => { weather.humidity = v; hooks.onWeather(); }, (v) => `${Math.round(v * 100)} %`);
-  slider('temp', -25, 32, 0.5, () => weather.temperature, (v) => { weather.temperature = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} °C`);
+  slider('rain', 0, 10, 0.1, () => cur().rain, (v) => { takeOver(); weather.rain = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} mm/h`);
+  slider('snow', 0, 10, 0.1, () => cur().snow, (v) => { takeOver(); weather.snow = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} mm/h`);
+  slider('humid', 0, 1, 0.01, () => cur().humidity, (v) => { takeOver(); weather.humidity = v; hooks.onWeather(); }, (v) => `${Math.round(v * 100)} %`);
+  slider('temp', -25, 32, 0.5, () => cur().temperature, (v) => { takeOver(); weather.temperature = v; hooks.onWeather(); }, (v) => `${v.toFixed(1)} °C`);
 
   const help = document.createElement('div');
   help.textContent = '`  hide    S  screenshot    [ ]  ±1h    { }  ±1d    0  now';
@@ -148,9 +154,9 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     const d = clock.now();
     readout.textContent = `${fps} fps   ${d.toLocaleString('sv-SE')}\nsun ${sun.elevation.toFixed(1)}° @${sun.azimuth.toFixed(0)}°   moon ${moon.elevation.toFixed(0)}° ${(moon.fraction * 100).toFixed(0)}%\nbright ${light.brightness.toFixed(2)}  warm ${light.warmth.toFixed(2)}  dark ${light.skyDark.toFixed(2)}\nsnow cover ${(accumulation.snow * 100).toFixed(0)}%   wet ${(accumulation.wet * 100).toFixed(0)}%`;
     const st = hooks.store();
-    srcInfo.textContent = source.mode === 'live' ? `live · ${st.status} · ${st.samples} h` : `manual (sliders) · data ${st.status}`;
+    srcInfo.textContent = source.mode === 'live' ? `live · ${st.status} · ${st.samples} h · sliders mirror` : `manual (sliders) · data ${st.status}`;
     liveBtn.style.opacity = source.mode === 'live' ? '.45' : '1';
-    if (frames % 15 === 0) sliders.slice(0, 2).forEach((r) => r()); // time sliders follow the clock
+    if (frames % 15 === 0) (source.mode === 'live' ? sliders : sliders.slice(0, 2)).forEach((r) => r()); // time (and, while live, weather) sliders follow the scene
     requestAnimationFrame(tick);
   };
   tick();

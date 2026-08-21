@@ -188,7 +188,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 
 if (import.meta.env.DEV) {
   import('./dev/devPanel').then((m) => m.installDevPanel(canvas, {
-    clock, weather: manual, sim, accumulation, source, store: () => ({ status: store.status, samples: series?.samples.length ?? 0 }),
+    clock, weather: manual, sim, accumulation, source, live: () => smoothed.value, store: () => ({ status: store.status, samples: series?.samples.length ?? 0 }),
     onWeather: () => { source.mode = 'manual'; },
     onLive: () => { source.mode = 'live'; updateTargets(clock.now().getTime()); syncAccumulation(true); },
     state: () => ({ sun, moon, light }),
