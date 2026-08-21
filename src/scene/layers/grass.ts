@@ -74,18 +74,27 @@ export function createGrassBand(spec: BandSpec, role: Role, depth: number, rng: 
         ctx.fillRect(f.vp.left, top, f.vp.right - f.vp.left, bandBottom - top);
         ctx.globalAlpha = 1;
       }
-      // Snow caps on the tips of the nearer blades.
-      if (cover > 0.12 && depth <= 0.2) {
-        ctx.strokeStyle = f.colours.ramp('snow')[2];
+      // Snow caps on the tips of the nearer blades; hoarfrost on clear, cold, still mornings
+      // whitens the tips the same way, more faintly, and the sun takes it off by mid-morning.
+      const frost = f.weather.frost * (1 - Math.min(1, cover * 3));
+      const capAlpha = Math.min(1, (cover - 0.12) * 2.2);
+      const snowy = capAlpha > 0.02 && depth <= 0.2;
+      const frosty = !snowy && frost > 0.03 && depth <= 0.2;
+      if (snowy || frosty) {
+        ctx.strokeStyle = f.colours.ramp('snow')[frosty ? 3 : 2];
         ctx.lineCap = 'round';
-        ctx.globalAlpha = Math.min(1, (cover - 0.12) * 2.2);
+        ctx.globalAlpha = snowy ? capAlpha : frost * 0.3;
+        // snow: a cap over the top fifth of every other blade; frost: a hairline over the top tenth of all
+        const from = snowy ? 0.78 : 0.9, stride = 2, wf = snowy ? 0.9 : 0.3;
         ctx.beginPath();
-        for (let i = 0; i < band.count; i += 2) {
+        for (let i = 0; i < band.count; i += stride) {
+          const bx = band.x[i];
+          if (bx < x0 || bx > x1) continue;
           const tx = (band.prevX[i] + (band.tipX[i] - band.prevX[i]) * a) * g * sag;
           const ty = (band.prevY[i] + (band.tipY[i] - band.prevY[i]) * a) * g;
-          ctx.lineWidth = band.w[i] * 0.9;
-          ctx.moveTo(band.x[i] + tx * 0.78, band.y[i] + ty * 0.8);
-          ctx.lineTo(band.x[i] + tx, band.y[i] + ty);
+          ctx.lineWidth = band.w[i] * wf;
+          ctx.moveTo(bx + tx * from, band.y[i] + ty * (from + 0.02));
+          ctx.lineTo(bx + tx, band.y[i] + ty);
         }
         ctx.stroke();
         ctx.globalAlpha = 1;

@@ -17,6 +17,7 @@ import { Accumulation } from './weather/accumulation';
 import { controlsFromSample } from './weather/state';
 import { buildTrack, trackAt, type AccumulationTrack } from './weather/track';
 import { mistAmount } from './weather/mist';
+import { frostAmount } from './weather/frost';
 import { sampleAt, blank as blankSample } from './data/interpolate';
 import { createWeatherStore } from './data/store';
 import type { Location, WeatherSeries } from './data/types';
@@ -48,7 +49,7 @@ const smoothed = new SmoothedWeather(target);
 const accumulation = new Accumulation();              // manual mode integrates live
 const sim = { speed: 1 };
 const wind = new WindField(createRng(SEED));
-const frameWeather: FrameWeather = { rain: 0, snow: 0, temperature: 15, fog: 0, cloudCover: 0, snowCover: 0, wet: 0 };
+const frameWeather: FrameWeather = { rain: 0, snow: 0, temperature: 15, fog: 0, cloudCover: 0, snowCover: 0, wet: 0, frost: 0 };
 
 let series: WeatherSeries | null = null;
 let track: AccumulationTrack | null = null;
@@ -123,8 +124,8 @@ const palette = seasonPalette(dayOfYear(clock.now()));
 const season = seasonParams(dayOfYear(clock.now()));
 let t = 0;
 
-startLoop({
-  update(dt) {
+const loopCb = {
+  update(dt: number) {
     t += dt;
     if (sim.speed !== 1) clock.shift((sim.speed - 1) * dt * 1000);
     const now = clock.now().getTime();
@@ -148,9 +149,11 @@ startLoop({
     frameWeather.fog = Math.min(1, w.fog + mistAmount(w.humidity, w.windSpeed, w.cloudCover, sun.elevation));
     frameWeather.cloudCover = w.cloudCover;
     frameWeather.snowCover = accumulation.snow; frameWeather.wet = accumulation.wet;
+    // Frost settles and lifts over tens of minutes, not instantly.
+    frameWeather.frost += (frostAmount(w.temperature, w.humidity, w.windSpeed, w.cloudCover, sun.elevation) - frameWeather.frost) * (1 - Math.exp(-dt / (performance.now() < scrubUntil ? 0.9 : source.mode === 'live' ? 600 : 2)));
     for (const l of layers) l.update?.(dt, t, wind);
   },
-  render(alpha) {
+  render(alpha: number) {
     const now = clock.now();
     sunPosition(now, place.lat, place.lon, sun);
     moonState(now, place.lat, place.lon, moon);
@@ -172,7 +175,8 @@ startLoop({
     label.setTime(now, clock.offsetMs < 60e3);
     if (performance.now() - describedAt > 60e3) { describedAt = performance.now(); canvas.setAttribute('aria-label', describeScene(place.name, now, w, sun.elevation, accumulation.snow)); }
   },
-});
+};
+startLoop(loopCb);
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => { navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => { /* offline shell is optional */ }); });
@@ -186,7 +190,9 @@ if (import.meta.env.DEV) {
     state: () => ({ sun, moon, light }),
   }));
   (window as unknown as { __yonder: unknown }).__yonder = {
-    layers, renderer, clock, wind, weather: manual, smoothed, accumulation, sim, source, store, get series() { return series; },
+    layers, renderer, clock, wind, weather: manual, smoothed, accumulation, sim, source, store, frameWeather, get series() { return series; },
     profile: () => renderer.profile(resolve(palette, light), light, t), season,
+    /** Dev: advance the whole scene n fixed steps and draw once (for hidden tabs where rAF is paused). */
+    step: (n = 1) => { for (let i = 0; i < n; i++) loopCb.update(1 / 60); loopCb.render(1); },
   };
 }

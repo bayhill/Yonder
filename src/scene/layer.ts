@@ -8,6 +8,8 @@ import type { SeasonParams } from '../colour/season';
 export interface FrameWeather {
   rain: number; snow: number; temperature: number; fog: number; cloudCover: number;
   snowCover: number; wet: number;
+  /** Hoarfrost 0..1 (inferred: cold, clear, calm, humid, early). */
+  frost: number;
 }
 
 /** Everything a layer needs to draw one frame. Built once per frame, never per layer. */

@@ -49,6 +49,10 @@ Layers, back to front: sky · stars · moon · sun · clouds · far hills · bir
 far snow · far trees · far snowfall · fog · back grass · near trees · post · mid grass · near snow · front grass ·
 near snowfall · rain. Static layers are cached offscreen and redrawn only when colours move a notch. Clouds are
 a noise field rebuilt at 20 Hz. A few times an hour, in daylight and fair weather, a line of distant birds crosses.
-The sun is drawn only when it is low and veiled. `prefers-reduced-motion` scales all motion to about a third.
+The sun is drawn only when it is low and veiled. Seasonal life is driven by continuous scalars in `colour/season.ts`:
+leaf-out, midsummer wildflowers (`flowers`), the October leaf fall (`leaves`), and grass height; hoarfrost and dawn
+mist are inferred from temperature, humidity, wind, cloud and sun (`weather/frost.ts`, `weather/mist.ts`). Blades
+bent hard by a gust lift one tone, so wind crosses the field as a pale wave. `prefers-reduced-motion` scales all
+motion to about a third. In dev, `window.__yonder.step(n)` advances the whole scene n steps when rAF is paused.
 
 Deploys to GitHub Pages from `main` via `.github/workflows/deploy.yml`.

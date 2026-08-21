@@ -5,6 +5,7 @@ import { sunLayer } from './layers/sun';
 import { createBirds } from './layers/birds';
 import { createPost } from './layers/post';
 import { createFlowers } from './layers/flowers';
+import { createLeaves } from './layers/leaves';
 import { createStars } from './layers/stars';
 import { createMoon } from './layers/moon';
 import { createClouds } from './layers/clouds';
@@ -71,6 +72,7 @@ export function buildScene(seed: string, moon: MoonState, cloudCover: () => numb
     fogLayer,
     backGrass,
     nearTrees,
+    createLeaves(rng),
     createPost(rng),
     midGrass,
     createFlowers(rng),
