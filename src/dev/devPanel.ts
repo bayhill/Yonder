@@ -62,7 +62,7 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     input.style.cssText = 'width:100%;height:14px;accent-color:#9fb3a4;margin:0';
     const val = document.createElement('span'); val.style.cssText = 'text-align:right;opacity:.9';
     const refresh = () => { input.value = String(get()); val.textContent = fmt(get()); };
-    input.addEventListener('input', () => { set(Number(input.value)); sliders.forEach((r) => r()); syncUrl(); });
+    input.addEventListener('input', () => { set(Number(input.value)); sliders.forEach((r) => r()); });
     row.append(name, input, val);
     root.appendChild(row);
     sliders.push(refresh);
@@ -94,7 +94,7 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
   const nowBtn = document.createElement('button');
   nowBtn.textContent = 'now';
   nowBtn.style.cssText = 'margin:2px 0 0;padding:1px 8px;font:inherit;color:inherit;background:rgba(255,255,255,.1);border:0;border-radius:3px;cursor:pointer';
-  nowBtn.addEventListener('click', () => { clock.reset(); sim.speed = 1; sliders.forEach((r) => r()); syncUrl(); });
+  nowBtn.addEventListener('click', () => { clock.reset(); sim.speed = 1; sliders.forEach((r) => r()); });
   root.appendChild(nowBtn);
 
   // --- source ---
@@ -104,10 +104,17 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
   const liveBtn = document.createElement('button');
   liveBtn.textContent = 'live';
   liveBtn.style.cssText = nowBtn.style.cssText;
-  liveBtn.addEventListener('click', () => { hooks.onLive(); sliders.forEach((r) => r()); });
+  liveBtn.addEventListener('click', () => { hooks.onLive(); clearWeatherUrl(); sliders.forEach((r) => r()); });
+  // A link to the current state is made on request, never behind your back: a URL with weather
+  // in it reopens in manual mode, which is confusing when you did not ask for it.
+  const linkBtn = document.createElement('button');
+  linkBtn.textContent = 'link';
+  linkBtn.title = 'Put the current time and weather into the URL (reopens in manual mode)';
+  linkBtn.style.cssText = nowBtn.style.cssText;
+  linkBtn.addEventListener('click', () => { syncUrl(); void navigator.clipboard?.writeText(location.href); linkBtn.textContent = 'copied'; setTimeout(() => (linkBtn.textContent = 'link'), 1200); });
   const srcInfo = document.createElement('span');
   srcInfo.style.cssText = 'opacity:.7';
-  srcRow.append(liveBtn, srcInfo);
+  srcRow.append(liveBtn, linkBtn, srcInfo);
   root.appendChild(srcRow);
 
   // --- sky ---
@@ -134,6 +141,11 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
   help.style.cssText = 'margin-top:8px;opacity:.45;font-size:9.5px';
   root.appendChild(help);
 
+  function clearWeatherUrl() {
+    const p = new URLSearchParams(location.search);
+    for (const k of ['cloud', 'fog', 'wind', 'gust', 'dir', 'rain', 'snow', 'temp', 'hum', 'thunder', 'hour', 'doy', 'time']) p.delete(k);
+    history.replaceState(null, '', `${location.pathname}${p.size ? '?' + p.toString() : ''}`);
+  }
   function syncUrl() {
     const p = new URLSearchParams(location.search);
     const set = (k: string, v: number, d: number, digits = 2) => (Math.abs(v - d) < 1e-9 ? p.delete(k) : p.set(k, String(+v.toFixed(digits))));
@@ -157,6 +169,7 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     const st = hooks.store();
     srcInfo.textContent = source.mode === 'live' ? `live · ${st.status} · ${st.samples} h · sliders mirror` : `manual (sliders) · data ${st.status}`;
     liveBtn.style.opacity = source.mode === 'live' ? '.45' : '1';
+    liveBtn.style.outline = source.mode === 'manual' ? '1px solid #d9b36a' : '';
     if (frames % 15 === 0) (source.mode === 'live' ? sliders : sliders.slice(0, 2)).forEach((r) => r()); // time (and, while live, weather) sliders follow the scene
     requestAnimationFrame(tick);
   };
@@ -180,7 +193,6 @@ export function installDevPanel(canvas: HTMLCanvasElement, hooks: DevHooks) {
     if (e.key === '{') clock.shift(-24 * H);
     if (e.key === '}') clock.shift(24 * H);
     if (e.key === '0') clock.reset();
-    if ('[]{}0'.includes(e.key)) syncUrl();
   });
 }
 

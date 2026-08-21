@@ -187,6 +187,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 }
 
 if (import.meta.env.DEV) {
+  if (source.mode === 'manual') console.info('[yonder] weather params in the URL → manual mode (the timeline moves time, not weather). Press ` and click live, or drop the params.');
   import('./dev/devPanel').then((m) => m.installDevPanel(canvas, {
     clock, weather: manual, sim, accumulation, source, live: () => smoothed.value, store: () => ({ status: store.status, samples: series?.samples.length ?? 0 }),
     onWeather: () => { source.mode = 'manual'; },
